@@ -1,0 +1,8 @@
+# 构建产物与机器状态不入库 (spec 2026-08-26 §7)
+.workbench/build/
+.workbench/state.json
+.workbench/build/last_failure.json
+build/
+*.o
+*.d
+.workbench/feedback/

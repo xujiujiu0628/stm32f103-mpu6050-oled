@@ -1,0 +1,10 @@
+{"ts": "2026-09-06T09:36:03+08:00", "origin": "manual", "step": "capture", "status": "ok", "command": "D:/claude/embedded-toolkit/scripts/verify.py --project . --timeout 8 --no-build --no-flash"}
+{"ts": "2026-09-06T09:36:31+08:00", "origin": "manual", "step": "capture", "status": "ok", "command": "D:/claude/embedded-toolkit/scripts/verify.py --project . --timeout 5 --no-build --no-flash --json"}
+{"ts": "2026-09-06T09:38:21+08:00", "origin": "manual", "step": "capture", "status": "ok", "command": "D:/claude/embedded-toolkit/scripts/verify.py --project . --timeout 5 --no-build --no-flash"}
+{"ts": "2026-09-06T10:03:57+08:00", "origin": "manual", "step": "capture", "status": "ok", "command": "D:/claude/embedded-toolkit/scripts/verify.py --project . --timeout 8 --no-build --no-flash"}
+{"ts": "2026-09-06T10:04:29+08:00", "origin": "manual", "step": "capture", "status": "ok", "command": "D:/claude/embedded-toolkit/scripts/verify.py --project . --timeout 8 --no-build --no-flash --json"}
+{"ts": "2026-09-06T10:05:15+08:00", "origin": "manual", "step": "capture", "status": "ok", "command": "D:/claude/embedded-toolkit/scripts/verify.py --project . --timeout 8 --no-build --no-flash --json"}
+{"ts": "2026-09-06T10:10:25+08:00", "origin": "manual", "step": "capture", "status": "ok", "command": "D:/claude/embedded-toolkit/scripts/verify.py --project . --timeout 8 --no-build --no-flash --json"}
+{"ts": "2026-09-06T10:14:27+08:00", "origin": "manual", "step": "capture", "status": "ok", "command": "D:/claude/embedded-toolkit/scripts/verify.py --project . --timeout 8 --no-build --no-flash --json"}
+{"ts": "2026-09-06T10:25:28+08:00", "origin": "manual", "step": "capture", "status": "ok", "command": "D:/claude/embedded-toolkit/scripts/verify.py --project . --timeout 8 --no-build --no-flash --json"}
+{"ts": "2026-09-06T10:31:57+08:00", "origin": "manual", "step": "capture", "status": "ok", "command": "D:/claude/embedded-toolkit/scripts/verify.py --project . --timeout 8 --no-build --no-flash --json"}

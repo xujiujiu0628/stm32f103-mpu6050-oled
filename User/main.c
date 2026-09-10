@@ -1,0 +1,155 @@
+/**
+  ******************************************************************************
+  * @file    main.c
+  * @brief   stm32f103-mpu6050-oled：MPU6050 100Hz 采样 + OLED 10Hz 显示 + PA0 按键切换
+  *
+  * @主循环    单一时间触发：1ms SysTick 维护时间戳 + 子模块 tick
+  *           - key_tick: 1ms
+  *           - mpu6050_update: 10ms 周期（100Hz 采样 + 互补滤波）
+  *           - oled_view_tick: 100ms 周期（10Hz 显示）
+  *           - oled_view_handle_key: 按键事件触发（无固定周期）
+  *           - rtt_log: 100ms 周期（节流，与显示同频）
+  ******************************************************************************
+  */
+#include "stm32f1xx_hal.h"
+#include "My_OLED.h"
+#include "mpu6050.h"
+#include "key.h"
+#include "oled_view.h"
+#include "SEGGER_RTT.h"
+#include <stdio.h>
+
+/* SysTick 计时（stm32f1xx_it.c 中递增） */
+volatile uint32_t g_millis = 0;
+
+/* 时间分频节流（避免在主循环内做 mod 计数） */
+static uint32_t s_last_mpu_tick = 0;   // 上次 MPU6050 采样
+static uint32_t s_last_rtt_tick = 0;   // 上次 RTT 打印
+
+/* SysTick 配置：72MHz → 1ms 周期 → 重装载值 72000-1 */
+static void SystemClock_72MHz(void);
+static void SysTick_Init_1ms(void);
+
+int main(void)
+{
+    HAL_Init();
+    SystemClock_72MHz();
+    SysTick_Init_1ms();
+
+    /* RTT 启动日志 */
+    SEGGER_RTT_Init();
+    SEGGER_RTT_WriteString(0, "[BOOT] stm32f103-mpu6050-oled v0.1\n");
+
+    /* 硬件初始化 */
+    if (MPU6050_Init() != 0)
+    {
+        SEGGER_RTT_WriteString(0, "[BOOT] MPU6050 init FAIL\n");
+    }
+    else
+    {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "[BOOT] MPU6050 OK @ 0x%02X\n", MPU6050_GetAddress());
+        SEGGER_RTT_WriteString(0, buf);
+    }
+    Key_Init();
+    OledView_Init();
+
+    /* 主循环 */
+    while (1)
+    {
+        uint32_t now = g_millis;
+
+        /* 按键 tick (1ms) */
+        Key_Tick();
+        KeyEvent_t ev = Key_GetEvent();
+        if (ev != KEY_EVENT_NONE)
+        {
+            OledView_HandleKey(ev == KEY_EVENT_SHORT, ev == KEY_EVENT_LONG);
+            /* RTT 记录按键事件（节流在 HandleKey 之外，避免事件丢失） */
+            const char *evname = (ev == KEY_EVENT_SHORT) ? "SHORT" : "LONG";
+            char buf[64];
+            snprintf(buf, sizeof(buf), "[KEY] %s state=%d\n", evname, OledView_GetState());
+            SEGGER_RTT_WriteString(0, buf);
+        }
+
+        /* MPU6050 采样 (10ms / 100Hz) */
+        if (now - s_last_mpu_tick >= 10)
+        {
+            s_last_mpu_tick = now;
+            uint8_t mpu_rc = MPU6050_UpdateEuler(NULL);
+            static uint8_t mpu_fail_logged = 0;
+            if (mpu_rc != 0 && !mpu_fail_logged)
+            {
+                mpu_fail_logged = 1;
+                SEGGER_RTT_WriteString(0, "[DIAG] MPU6050_UpdateEuler FAIL\n");
+            }
+        }
+
+        /* OLED 显示 tick (100ms / 10Hz) */
+        OledView_Tick();
+
+        /* RTT 节流打印 (100ms) */
+        if (now - s_last_rtt_tick >= 100)
+        {
+            s_last_rtt_tick = now;
+            const MPU6050_RawData_t *r  = MPU6050_GetRaw();
+            const MPU6050_Euler_t   *e  = MPU6050_GetEuler();
+            char buf[128];
+            snprintf(buf, sizeof(buf),
+                "[STATE=%d last=%d] ax=%.2f ay=%.2f az=%.2f gx=%.1f gy=%.1f gz=%.1f roll=%.1f pitch=%.1f yaw=%.1f\n",
+                OledView_GetState(), 0,
+                r->ax, r->ay, r->az, r->gx, r->gy, r->gz,
+                e->roll, e->pitch, e->yaw);
+            SEGGER_RTT_WriteString(0, buf);
+        }
+
+        /* PA0 诊断：每 2s 打印一次电平（确认硬件极性） */
+        static uint32_t s_last_diag_tick = 0;
+        if (now - s_last_diag_tick >= 2000)
+        {
+            s_last_diag_tick = now;
+            char buf[64];
+            snprintf(buf, sizeof(buf), "[DIAG] PA0=%d (1=high=pressed)\n", Key_ReadLevel());
+            SEGGER_RTT_WriteString(0, buf);
+        }
+    }
+}
+
+/**
+  * @brief  System Clock 配置：72MHz（外部 8MHz HSE × 9 倍频）
+  */
+static void SystemClock_72MHz(void)
+{
+    RCC_OscInitTypeDef osc = {0};
+    RCC_ClkInitTypeDef clk = {0};
+
+    /* HSE 8MHz → PLL × 9 → 72MHz SYSCLK */
+    osc.OscillatorType      = RCC_OSCILLATORTYPE_HSE;
+    osc.HSEState            = RCC_HSE_ON;
+    osc.HSEPredivValue      = RCC_HSE_PREDIV_DIV1;
+    osc.PLL.PLLState        = RCC_PLL_ON;
+    osc.PLL.PLLSource       = RCC_PLLSOURCE_HSE;
+    osc.PLL.PLLMUL          = RCC_PLL_MUL9;
+    HAL_RCC_OscConfig(&osc);
+
+    clk.ClockType      = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
+    clk.SYSCLKSource   = RCC_SYSCLKSOURCE_PLLCLK;
+    clk.AHBCLKDivider  = RCC_SYSCLK_DIV1;
+    clk.APB1CLKDivider = RCC_HCLK_DIV2;     // APB1 36MHz（USART/I2C 上限）
+    clk.APB2CLKDivider = RCC_HCLK_DIV1;     // APB2 72MHz（ADC/GPIO）
+    HAL_RCC_ClockConfig(&clk, FLASH_LATENCY_2);
+
+    /* 使能 DWT（供软件 I2C 微秒延时使用） */
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CYCCNT = 0;
+    DWT->CTRL  |= DWT_CTRL_CYCCNTENA_Msk;
+}
+
+/**
+  * @brief  SysTick 配置 1ms 中断
+  */
+static void SysTick_Init_1ms(void)
+{
+    SysTick_Config(SystemCoreClock / 1000U);  // 72MHz / 1000 = 72000-1
+    HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+}
