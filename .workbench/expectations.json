@@ -4,23 +4,31 @@
     {
       "id": "FR-BOOT-01",
       "desc": "上电输出启动横幅",
-      "texts": ["[BOOT] stm32f103-mpu6050-oled v0.1"]
+      "texts": [
+        "[BOOT] stm32f103-mpu6050-oled v0.1"
+      ]
     },
     {
       "id": "FR-MPU-01",
       "desc": "MPU6050 探测成功（地址 0x68 或 0x69）",
-      "patterns": ["\\[BOOT\\] MPU6050 OK @ 0x6[89]"]
+      "patterns": [
+        "\\[BOOT\\] MPU6050 OK @ 0x6[89]"
+      ]
     },
     {
       "id": "FR-MPU-02",
       "desc": "周期性 6 轴数据行（100ms 周期）",
-      "patterns": ["\\[STATE=\\d+ last=\\d+\\] ax=-?\\d+\\.\\d\\d ay=-?\\d+\\.\\d\\d az=-?\\d+\\.\\d\\d gx=-?\\d+\\.\\d gy=-?\\d+\\.\\d gz=-?\\d+\\.\\d"],
+      "patterns": [
+        "\\[STATE=\\d+ last=\\d+\\] ax=-?\\d+\\.\\d\\d ay=-?\\d+\\.\\d\\d az=-?\\d+\\.\\d\\d gx=-?\\d+\\.\\d gy=-?\\d+\\.\\d gz=-?\\d+\\.\\d"
+      ],
       "xfail": false
     },
     {
       "id": "FR-MPU-03",
       "desc": "静止时加速度 az 应在 0.8-1.2g 范围（重力归一化）",
-      "patterns": ["az=(-?\\d+\\.\\d\\d)"],
+      "patterns": [
+        "az=(-?\\d+\\.\\d\\d)"
+      ],
       "capture_group": 1,
       "min": 0.5,
       "max": 1.5,
@@ -29,28 +37,30 @@
     {
       "id": "FR-OLED-01",
       "desc": "RTT 周期行含状态字段（OLED 10Hz 显示状态机）",
-      "texts": ["[STATE="]
+      "texts": [
+        "[STATE="
+      ]
     },
     {
       "id": "FR-KEY-01",
       "desc": "短按事件输出（用户按 1 次）",
-      "texts": ["[KEY] SHORT"],
-      "xfail": true,
-      "xfail_reason": "物理按键测试依赖人工触发，本工程验收时由用户手动按键；CI 环境下无法自动产生"
+      "texts": [
+        "[KEY] SHORT"
+      ]
     },
     {
       "id": "FR-KEY-02",
       "desc": "长按事件输出（用户按 1 次）",
-      "texts": ["[KEY] LONG"],
-      "xfail": true,
-      "xfail_reason": "物理按键测试依赖人工触发，本工程验收时由用户手动按键；CI 环境下无法自动产生"
+      "texts": [
+        "[KEY] LONG"
+      ]
     },
     {
       "id": "FR-OLED-02",
       "desc": "关屏后无周期性 RTT 数据（节流验证）",
-      "texts": ["[STATE=3 last="],
-      "xfail": true,
-      "xfail_reason": "关屏状态是用户长按触发，CI 默认不在关屏状态"
+      "texts": [
+        "[STATE=3 last="
+      ]
     }
   ]
 }
