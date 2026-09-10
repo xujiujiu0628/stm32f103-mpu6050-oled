@@ -1,0 +1,61 @@
+{
+  "tag": "v0.5",
+  "git_head": "422e45f5be4280abcfd0e2e26911c491cf14b0dd",
+  "branch": "master",
+  "timestamp": "2026-09-10T21:25:47+08:00",
+  "build_mode": "clean_rebuild",
+  "artifacts": {
+    "hex": {
+      "path": "build/mpu6050-oled.hex",
+      "sha256": "3d7c3952aa49f2ca4f9f5f010c5ce5f3dfa82bc229fdceb0c8d1d50c5b599451"
+    },
+    "elf": {
+      "path": "build/mpu6050-oled.elf",
+      "sha256": "8ea514215fff4b59e1eea80935574bb377033eeefe95a696c7c6403758b353c0"
+    }
+  },
+  "contracts": {
+    "config_sha256": "2d3f57cbc999b1815f347865af937934bd08211483c88ab4378e4a0889d47147",
+    "expectations_sha256": "9d78dc77e2860aee4ac6804d63d9c4443aa7b85221fb6558eb94b34fd0d1799f"
+  },
+  "results": [
+    {
+      "id": "FR-BOOT-01",
+      "status": "pass"
+    },
+    {
+      "id": "FR-MPU-01",
+      "status": "pass"
+    },
+    {
+      "id": "FR-MPU-02",
+      "status": "pass"
+    },
+    {
+      "id": "FR-MPU-03",
+      "status": "pass"
+    },
+    {
+      "id": "FR-OLED-01",
+      "status": "pass"
+    },
+    {
+      "id": "FR-KEY-01",
+      "status": "pass"
+    },
+    {
+      "id": "FR-KEY-02",
+      "status": "pass"
+    },
+    {
+      "id": "FR-OLED-02",
+      "status": "pass"
+    }
+  ],
+  "xfail_waived": [],
+  "tools": {
+    "toolkit": "0.5",
+    "python": "3.14.3",
+    "gcc": "arm-none-eabi-gcc.exe (GNU Arm Embedded Toolchain 10.3-2021.10) 10.3.1 20210824 "
+  }
+}
