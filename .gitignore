@@ -6,3 +6,4 @@ build/
 *.o
 *.d
 .workbench/feedback/
+.workbench/state/
