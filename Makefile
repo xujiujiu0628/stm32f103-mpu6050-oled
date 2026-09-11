@@ -37,6 +37,7 @@ BUILD_DIR = build
 #   User/oled_view/oled_view.c - OLED 4 状态显示状态机
 C_SOURCES =  \
 User/main.c \
+User/hardfault_rtt.c \
 User/stm32f1xx_it.c \
 User/MyI2C.c \
 User/My_OLED.c \

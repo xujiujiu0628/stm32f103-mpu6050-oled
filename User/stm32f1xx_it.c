@@ -22,7 +22,7 @@ void SysTick_Handler(void)
 /* ----------- 以下为 HAL 库要求的 ISR 桩（即使不用也需定义） ----------- */
 
 void NMI_Handler(void)              { }
-void HardFault_Handler(void)        { while (1) {} }
+/* HardFault_Handler 让位 User/hardfault_rtt.c 强符号 (B1/F-115 RTT 现场诊断) */
 void MemManage_Handler(void)        { while (1) {} }
 void BusFault_Handler(void)         { while (1) {} }
 void UsageFault_Handler(void)       { while (1) {} }
