@@ -21,6 +21,9 @@
       "patterns": [
         "\\[STATE=\\d+ last=\\d+\\] ax=-?\\d+\\.\\d\\d ay=-?\\d+\\.\\d\\d az=-?\\d+\\.\\d\\d gx=-?\\d+\\.\\d gy=-?\\d+\\.\\d gz=-?\\d+\\.\\d"
       ],
+      "forbidden_patterns": [
+        "\\[DIAG\\] MPU6050_UpdateEuler FAIL"
+      ],
       "xfail": false
     },
     {
@@ -62,5 +65,17 @@
         "[STATE=3 last="
       ]
     }
+  ],
+  "waived": [
+    { "id": "FR-DISP-02", "reason": "10Hz 刷新率系屏上视觉/示波器测量, RTT 不可见",
+      "evidence": "docs/FSD.md#FR-DISP-02", "owner": "maintainer", "date": "2026-09-11" },
+    { "id": "FR-OLED-03", "reason": "4 页显示内容为视觉观察项; 状态字段侧有 FR-OLED-01/02 断言",
+      "evidence": "docs/FSD.md#FR-OLED-03", "owner": "maintainer", "date": "2026-09-11" },
+    { "id": "FR-KEY-03", "reason": "状态机切换需真人按键时序, 断言在采集窗内不稳定; 真机物理测试已验",
+      "evidence": ".workbench/releases/v0.5.json", "owner": "maintainer", "date": "2026-09-11" },
+    { "id": "FR-PWR-01", "reason": "关屏黑屏为视觉观察; 后台续跑由 FR-OLED-02 断言部分覆盖",
+      "evidence": ".workbench/releases/v0.5.json", "owner": "maintainer", "date": "2026-09-11" },
+    { "id": "FR-PWR-02", "reason": "唤醒回原页为物理按键序列验证",
+      "evidence": ".workbench/releases/v0.5.json", "owner": "maintainer", "date": "2026-09-11" }
   ]
 }
