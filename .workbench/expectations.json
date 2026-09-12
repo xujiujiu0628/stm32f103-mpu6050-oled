@@ -9,6 +9,20 @@
       ]
     },
     {
+      "id": "FR-BOOT-02",
+      "desc": "启动横幅含重校准提示行（PB15 长按）",
+      "texts": [
+        "[BOOT] PB15 long = recalibrate gyro"
+      ]
+    },
+    {
+      "id": "FR-BRT-01",
+      "desc": "亮度模块评估心跳输出档位行（滞回引擎在跑，1Hz）",
+      "texts": [
+        "[BRT] band="
+      ]
+    },
+    {
       "id": "FR-MPU-01",
       "desc": "MPU6050 探测成功（地址 0x68 或 0x69）",
       "patterns": [
@@ -59,6 +73,13 @@
       ]
     },
     {
+      "id": "FR-CAL-01",
+      "desc": "PB15 长按触发陀螺仪重校准（XPASS 翻转: 用户自持窗实测 [CAL] done）",
+      "texts": [
+        "[CAL] done"
+      ]
+    },
+    {
       "id": "FR-OLED-02",
       "desc": "关屏后无周期性 RTT 数据（节流验证）",
       "texts": [
@@ -76,6 +97,12 @@
     { "id": "FR-PWR-01", "reason": "关屏黑屏为视觉观察; 后台续跑由 FR-OLED-02 断言部分覆盖",
       "evidence": ".workbench/releases/v0.5.json", "owner": "maintainer", "date": "2026-09-11" },
     { "id": "FR-PWR-02", "reason": "唤醒回原页为物理按键序列验证",
-      "evidence": ".workbench/releases/v0.5.json", "owner": "maintainer", "date": "2026-09-11" }
+      "evidence": ".workbench/releases/v0.5.json", "owner": "maintainer", "date": "2026-09-11" },
+    { "id": "FR-BRT-02", "reason": "滞回阈值正确性主体在 host tier（哨兵单测 21 例），verify 面由 FR-BRT-01 心跳 + FR-BRT-03 人工档变观察覆盖",
+      "evidence": "tests/test_brt_band.c", "owner": "maintainer", "date": "2026-09-12" },
+    { "id": "FR-BRT-03", "reason": "变档 ≤100ms 亮度可察觉变化为人工目测；无周期刷屏占用由 FR-BRT-01 心跳频率断言侧面钉",
+      "evidence": "docs/FSD.md#FR-BRT-03", "owner": "maintainer", "date": "2026-09-12" },
+    { "id": "FR-CAL-02", "reason": "覆盖层出现/撤销为人工目测；'校准期间禁止穿插刷屏'为代码结构约束（OledView_ShowCalibHint 先刷后采样），fresh-checker 审读面",
+      "evidence": "docs/FSD.md#FR-CAL-02", "owner": "maintainer", "date": "2026-09-12" }
   ]
 }

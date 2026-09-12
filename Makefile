@@ -43,11 +43,15 @@ User/MyI2C.c \
 User/My_OLED.c \
 User/mpu6050/mpu6050_i2c.c \
 User/mpu6050/mpu6050.c \
+User/brt_band.c \
+User/adc_brt.c \
 User/key/key.c \
 User/oled_view/oled_view.c \
 ThirdParty/RTT/SEGGER_RTT.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_cortex.c \
+Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_adc.c \
+Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_adc_ex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_dma.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio_ex.c \

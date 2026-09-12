@@ -16,6 +16,7 @@
 #include "mpu6050.h"
 #include "key.h"
 #include "oled_view.h"
+#include "adc_brt.h"
 #include "SEGGER_RTT.h"
 #include <stdio.h>
 
@@ -52,7 +53,9 @@ int main(void)
         SEGGER_RTT_WriteString(0, buf);
     }
     Key_Init();
+    AdcBrt_Init();
     OledView_Init();
+    SEGGER_RTT_WriteString(0, "[BOOT] PB15 long = recalibrate gyro\n");
 
     /* 主循环 */
     while (1)
@@ -61,16 +64,44 @@ int main(void)
 
         /* 按键 tick (1ms) */
         Key_Tick();
-        KeyEvent_t ev = Key_GetEvent();
-        if (ev != KEY_EVENT_NONE)
+
+        /* KEY0 (PA0): 短按循环页 / 长按关屏 —— 语义不变 */
+        KeyEvent_t ev0 = Key_GetEvent(KEY0);
+        if (ev0 != KEY_EVENT_NONE)
         {
-            OledView_HandleKey(ev == KEY_EVENT_SHORT, ev == KEY_EVENT_LONG);
+            OledView_HandleKey(ev0 == KEY_EVENT_SHORT, ev0 == KEY_EVENT_LONG);
+            /* 屏开关与亮度联动：关屏期间只记档不发对比度，唤醒补发 */
+            AdcBrt_ScreenOn(OledView_GetState() != OLEDS_OFF);
             /* RTT 记录按键事件（节流在 HandleKey 之外，避免事件丢失） */
-            const char *evname = (ev == KEY_EVENT_SHORT) ? "SHORT" : "LONG";
+            const char *evname = (ev0 == KEY_EVENT_SHORT) ? "SHORT" : "LONG";
             char buf[64];
             snprintf(buf, sizeof(buf), "[KEY] %s state=%d\n", evname, OledView_GetState());
             SEGGER_RTT_WriteString(0, buf);
         }
+
+        /* KEY1 (PB15, 按下=低): 长按 = 陀螺仪重校准（短按忽略） */
+        KeyEvent_t ev1 = Key_GetEvent(KEY1);
+        if (ev1 == KEY_EVENT_LONG)
+        {
+            char buf[64];
+            /* 先刷屏再采样: 软 I2C 整帧 ~13ms 阻塞会污染校准采样 dt */
+            OledView_ShowCalibHint(1);
+            if (MPU6050_CalibrateGyroBias() == 0)
+            {
+                const MPU6050_RawData_t *rg = MPU6050_GetRaw();
+                snprintf(buf, sizeof(buf), "[CAL] done gx=%.2f gy=%.2f gz=%.2f\n",
+                         rg->gx, rg->gy, rg->gz);
+            }
+            else
+            {
+                snprintf(buf, sizeof(buf), "[CAL] FAIL\n");
+            }
+            SEGGER_RTT_WriteString(0, buf);
+            OledView_ShowCalibHint(0);
+        }
+
+        /* 亮度电位器 (PA6/ADC1_IN6): 内部 50ms 节流评估 + 滞回三档 */
+        AdcBrt_Poll();
 
         /* MPU6050 采样 (10ms / 100Hz) */
         if (now - s_last_mpu_tick >= 10)
@@ -109,7 +140,7 @@ int main(void)
         {
             s_last_diag_tick = now;
             char buf[64];
-            snprintf(buf, sizeof(buf), "[DIAG] PA0=%d (1=high=pressed)\n", Key_ReadLevel());
+            snprintf(buf, sizeof(buf), "[DIAG] PA0=%d (1=high=pressed)\n", Key_ReadLevel(KEY0));
             SEGGER_RTT_WriteString(0, buf);
         }
     }

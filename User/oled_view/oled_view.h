@@ -46,4 +46,8 @@ OledState_t OledView_GetState(void);
 void OledView_DisplayOff(void);
 void OledView_DisplayOn(void);
 
+/* 校准提示覆盖层（FR-CAL-02）：hint=1 全屏覆盖并立即整帧刷
+ *（刷屏成本花在校准之前）；hint=0 撤销并 ForceRefresh */
+void OledView_ShowCalibHint(uint8_t hint);
+
 #endif

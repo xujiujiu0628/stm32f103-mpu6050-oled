@@ -31,6 +31,7 @@ static OledState_t s_state      = OLEDS_RAW;
 static OledState_t s_last_state = OLEDS_EULER;  // 关屏前的状态（首次默认 EULER，唤醒后回这里）
 static uint32_t    s_last_render_ms = 0;
 static uint8_t     s_first_render = 0;          // 启动画面已显示标志
+static uint8_t     s_calib_overlay = 0;         // 校准覆盖层在场（FR-CAL-02）
 
 /* ---------------- 内部工具：数字格式化 ---------------- */
 
@@ -141,6 +142,36 @@ void OledView_DisplayOff(void)
 void OledView_DisplayOn(void)
 {
     My_OLED_WriteCommand(0xAF);   // SSD1306 开显示
+}
+
+/* ---------------- 校准提示覆盖层 (FSD §6 FR-CAL-02) ---------------- */
+
+/**
+ * @brief  hint=1: 全屏覆盖 "CALIBRATING... Keep still"（调用方随后执行
+ *         阻塞校准——本函数内部完成整帧刷, 把 13ms 刷屏成本花在校准之前,
+ *         不污染校准采样 dt, 09-06 教训）。
+ *         hint=0: 撤销覆盖层（ForceRefresh, 下一 tick 重绘当前页）。
+ *         关屏状态下发 hint=1 会被忽略（屏黑着提示无意义）。
+ */
+void OledView_ShowCalibHint(uint8_t hint)
+{
+    if (hint)
+    {
+        if (s_state == OLEDS_OFF)
+        {
+            return;
+        }
+        My_OLED_Clear();
+        My_OLED_ShowString(0, 24, (char *)"CALIBRATING...", 6);
+        My_OLED_ShowString(0, 40, (char *)"Keep still ~1s", 6);
+        My_OLED_Update();
+        s_calib_overlay = 1;
+    }
+    else if (s_calib_overlay)
+    {
+        s_calib_overlay = 0;
+        OledView_ForceRefresh();
+    }
 }
 
 /* ---------------- 启动画面 ---------------- */
