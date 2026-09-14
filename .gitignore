@@ -7,3 +7,7 @@ build/
 *.d
 .workbench/feedback/
 .workbench/state/
+
+# IDE/本机调试配置不入库 (2026-09-14 拍板: 同 button-toggle 处置)
+.mcp.json
+.vscode/
