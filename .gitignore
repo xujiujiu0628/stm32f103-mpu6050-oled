@@ -11,3 +11,6 @@ build/
 # IDE/本机调试配置不入库 (2026-09-14 拍板: 同 button-toggle 处置)
 .mcp.json
 .vscode/
+
+# 跨进程锁常驻哨兵不入库 (F-219 file_lock 设计明言不删哨兵; 不罩会绊 release G0 树净检查)
+.workbench/*.lock
