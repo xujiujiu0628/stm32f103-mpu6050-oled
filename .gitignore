@@ -13,4 +13,4 @@ build/
 .vscode/
 
 # 跨进程锁常驻哨兵不入库 (F-219 file_lock 设计明言不删哨兵; 不罩会绊 release G0 树净检查)
-.workbench/*.lock
+.workbench/*.lock*
