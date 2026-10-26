@@ -28,6 +28,83 @@
 /* 外部 SysTick 计时 */
 extern volatile uint32_t g_millis;
 
+/* ---------------- 性能观测探针 + 刷屏策略（第 1/2 步） ----------------
+ * DWT->CYCCNT 已在 main.c SystemClock_72MHz 里使能；72MHz → 1us = 72 拍。
+ *
+ * @2026-10-26 真机实测基线（整帧刷）：单次刷屏阻塞 131.2ms / 帧，主循环一个
+ *   迭代只剩一次采样机会 → 实际采样率 7.3Hz（名义 100Hz），OLED 3.6s 才刷一帧。
+ *   主循环 7 迭代/s、轻迭代 0 次：整条循环就是"采样 → 刷屏"串行链。
+ *
+ * @刷屏方式（OLEDS_SLICE_ENABLE 切换）
+ *   0 = 整帧：My_OLED_Update 一次发 8 页 1024 字节 → 单次阻塞 ~131ms
+ *   1 = 切片：每次只发 64 字节（半页），16 片凑一帧 → 单次阻塞 ~8ms（实测 8.4ms），
+ *           采样节拍回到 96~97Hz。整帧总字节不变，但帧率从 7fps 降到 5~6fps：
+ *           每片多一次定位事务，且片与片之间被采样/按键插队。
+ */
+#define OLEDS_SLICE_ENABLE   1
+#define OLEDS_SLICE_BYTES    64U                          /* 一片字节数（64 = 半页） */
+#define OLEDS_SLICE_PER_PAGE (128U / OLEDS_SLICE_BYTES)   /* 每页片数 */
+#define OLEDS_SLICE_N        (8U * OLEDS_SLICE_PER_PAGE)  /* 整帧片数 */
+
+volatile uint32_t g_perf_flush_us = 0;   /* 单次刷屏阻塞耗时（整帧版=整帧，切片版=一片） */
+volatile uint32_t g_perf_draw_us  = 0;   /* 一次排版+绘制（纯 RAM 操作）耗时 */
+volatile uint32_t g_perf_frames   = 0;   /* 累计刷完的整帧数 */
+
+#if OLEDS_SLICE_ENABLE
+static uint8_t s_flush_pending = 0;      /* 有帧待发 */
+static uint8_t s_slice_idx     = 0;      /* 下一片片号 */
+#endif
+
+static uint32_t us_since(uint32_t t0)
+{
+    return (DWT->CYCCNT - t0) / (SystemCoreClock / 1000000U);
+}
+
+/* 周期性渲染路径的刷屏入口：切片模式只画不刷（由 Tick 的分片机推进），
+ * 整帧模式立即整帧刷并计时 */
+static void oled_flush(void)
+{
+#if OLEDS_SLICE_ENABLE
+    /* no-op：扇出交给 OledView_Tick */
+#else
+    uint32_t t0 = DWT->CYCCNT;
+    My_OLED_Update();
+    g_perf_flush_us = us_since(t0);
+    g_perf_frames++;
+#endif
+}
+
+/* 整帧刷：启动画面 / 校准提示这类一次性路径专用
+ * （成本一次性，且校准场景本就要求把刷屏成本花在采样之前，不计入 PERF 峰值） */
+static void oled_flush_full(void)
+{
+    My_OLED_Update();
+#if OLEDS_SLICE_ENABLE
+    s_flush_pending = 0;   /* 缓冲已整帧发出，作废未发完的片 */
+#endif
+}
+
+#if OLEDS_SLICE_ENABLE
+/* 发一片；返回 1 表示整帧发完 */
+static uint8_t oled_flush_slice(void)
+{
+    uint8_t  page = (uint8_t)(s_slice_idx / OLEDS_SLICE_PER_PAGE);
+    uint8_t  col  = (uint8_t)((s_slice_idx % OLEDS_SLICE_PER_PAGE) * OLEDS_SLICE_BYTES);
+    uint32_t t0   = DWT->CYCCNT;
+
+    My_OLED_UpdateChunk(page, col, OLEDS_SLICE_BYTES);
+    g_perf_flush_us = us_since(t0);
+
+    if (++s_slice_idx >= OLEDS_SLICE_N)
+    {
+        s_slice_idx = 0;
+        g_perf_frames++;
+        return 1;
+    }
+    return 0;
+}
+#endif
+
 static OledState_t s_state      = OLEDS_RAW;
 static OledState_t s_last_state = OLEDS_EULER;  // 关屏前的状态（首次默认 EULER，唤醒后回这里）
 static uint32_t    s_last_render_ms = 0;
@@ -64,7 +141,7 @@ static void render_raw(void)
     format_axis(buf, "gx", r->gx, "d/s"); My_OLED_ShowString(0, 40, buf, 6);
     format_axis(buf, "gy", r->gy, "d/s"); My_OLED_ShowString(0, 48, buf, 6);
     format_axis(buf, "gz", r->gz, "d/s"); My_OLED_ShowString(0, 56, buf, 6);
-    My_OLED_Update();
+    oled_flush();
 }
 
 static void render_euler(void)
@@ -76,7 +153,7 @@ static void render_euler(void)
     sprintf(buf, "Roll:%+6.1f", e->roll);   My_OLED_ShowString(0, 24, buf, 6);
     sprintf(buf, "Pitch:%+5.1f", e->pitch); My_OLED_ShowString(0, 40, buf, 6);
     My_OLED_ShowString(0, 56, "Yaw: live", 6);   // 文字占位
-    My_OLED_Update();
+    oled_flush();
 }
 
 /* Bresenham 圆算法：画 8 分点对称圆（4 象限 × 2 对称轴） */
@@ -130,7 +207,7 @@ static void render_attitude(void)
         }
     }
 
-    My_OLED_Update();
+    oled_flush();
 }
 
 /* ---------------- 关屏/开屏薄封装 ---------------- */
@@ -169,7 +246,7 @@ static void render_tetris(void)
     else
         My_OLED_ShowString(0, 56, (char *)"TILT:MOVE PB15:ROT", 6);
 
-    My_OLED_Update();
+    oled_flush();
 }
 
 void OledView_DisplayOff(void)
@@ -202,7 +279,7 @@ void OledView_ShowCalibHint(uint8_t hint)
         My_OLED_Clear();
         My_OLED_ShowString(0, 24, (char *)"CALIBRATING...", 6);
         My_OLED_ShowString(0, 40, (char *)"Keep still ~1s", 6);
-        My_OLED_Update();
+        oled_flush_full();          /* 校准前整帧刷：成本一次性，且不能污染采样 dt */
         s_calib_overlay = 1;
     }
     else if (s_calib_overlay)
@@ -230,7 +307,7 @@ static void render_startup(void)
         My_OLED_ShowString(0, 24, "MPU6050 FAIL", 6);
         My_OLED_ShowString(0, 40, "  Check HW", 6);
     }
-    My_OLED_Update();
+    oled_flush_full();              /* 启动画面一次性整帧刷 */
     s_first_render = 1;
 }
 
@@ -297,20 +374,49 @@ void OledView_Tick(void)
         return;
     }
 
-    /* 关屏状态：什么都不渲染 */
-    if (s_state == OLEDS_OFF) return;
+    /* 关屏状态：什么都不渲染（未发完的帧一并作废） */
+    if (s_state == OLEDS_OFF)
+    {
+#if OLEDS_SLICE_ENABLE
+        s_flush_pending = 0;
+#endif
+        return;
+    }
+
+#if OLEDS_SLICE_ENABLE
+    /* 有未发完的帧：本迭代只发一片就返回，把整帧阻塞摊到 OLEDS_SLICE_N 次主循环，
+     * 中间的主循环迭代照常跑采样/按键/点阵 */
+    if (s_flush_pending)
+    {
+        if (oled_flush_slice()) s_flush_pending = 0;
+        return;
+    }
+#endif
 
     /* 10Hz 节流 */
     if (g_millis - s_last_render_ms < OLEDS_REFRESH_MS) return;
     s_last_render_ms = g_millis;
 
-    switch (s_state)
     {
-    case OLEDS_RAW:      render_raw();      break;
-    case OLEDS_EULER:    render_euler();    break;
-    case OLEDS_ATTITUDE: render_attitude(); break;
-    case OLEDS_TETRIS:   render_tetris();   break;
-    default: break;
+        uint32_t t_render = DWT->CYCCNT;
+        switch (s_state)
+        {
+        case OLEDS_RAW:      render_raw();      break;
+        case OLEDS_EULER:    render_euler();    break;
+        case OLEDS_ATTITUDE: render_attitude(); break;
+        case OLEDS_TETRIS:   render_tetris();   break;
+        default: break;
+        }
+#if OLEDS_SLICE_ENABLE
+        g_perf_draw_us  = us_since(t_render);   /* 纯排版+绘制（刷屏已外移） */
+        s_slice_idx     = 0;
+        s_flush_pending = 1;                    /* 下一迭代开始逐片发送 */
+#else
+        {
+            uint32_t total = us_since(t_render);        /* 绘制 + 整帧刷 */
+            g_perf_draw_us = (total > g_perf_flush_us) ? (total - g_perf_flush_us) : 0U;
+        }
+#endif
     }
 }
 

@@ -29,6 +29,60 @@ volatile uint32_t g_millis = 0;
 static uint32_t s_last_mpu_tick = 0;   // 上次 MPU6050 采样
 static uint32_t s_last_rtt_tick = 0;   // 上次 RTT 打印
 
+/* ---------------- 第 1 步实测：刷帧耗时 / 实际采样周期 / 循环节拍 ----------------
+ * 1s 一行 RTT 心跳，整数定点打印（nano printf 不认 %f，历史坑）。
+ * PERF_TRACE=0 可整体关掉（探针只读全局变量，关掉后无功能影响）。 */
+#define PERF_TRACE 1
+
+#if PERF_TRACE
+static uint32_t s_perf_t0       = 0;   /* 统计窗起点 */
+static uint32_t s_perf_loops    = 0;   /* 主循环迭代数 */
+static uint32_t s_perf_free     = 0;   /* 迭代内没有发生刷屏的次数（"轻迭代"） */
+static uint32_t s_perf_mpu_n    = 0;   /* 采样次数 */
+static uint32_t s_perf_mpu_sum  = 0;   /* 实际采样间隔累计 (ms) */
+static uint32_t s_perf_mpu_max  = 0;   /* 实际采样间隔最大值 (ms) */
+static uint32_t s_perf_mpu_late = 0;   /* 间隔 >15ms（漏掉至少一拍）次数 */
+static uint32_t s_perf_fmax_us  = 0;   /* 窗口内最坏一帧刷屏耗时 (us) */
+static uint32_t s_perf_f0       = 0;   /* 窗口起点帧计数 */
+
+/* 实际采样间隔：喂给互补滤波 dt 的真值，名义应为 10ms */
+static void perf_mpu_interval(uint32_t interval_ms)
+{
+    s_perf_mpu_n++;
+    s_perf_mpu_sum += interval_ms;
+    if (interval_ms > s_perf_mpu_max) s_perf_mpu_max = interval_ms;
+    if (interval_ms > 15U)            s_perf_mpu_late++;
+}
+
+static void perf_tick(uint32_t now)
+{
+    char buf[176];
+    uint32_t win_ms, frames, avg_ms10;
+
+    if (now - s_perf_t0 < 1000U) return;
+
+    win_ms   = now - s_perf_t0;
+    frames   = g_perf_frames - s_perf_f0;
+    avg_ms10 = s_perf_mpu_n ? (s_perf_mpu_sum * 10U / s_perf_mpu_n) : 0U;
+
+    snprintf(buf, sizeof(buf),
+        "[PERF] flush_us=%lu max_us=%lu draw_us=%lu fps=%lu | "
+        "mpu n=%lu avg=%lu.%lums max_ms=%lu late=%lu | loop=%lu/s free=%lu\n",
+        (unsigned long)g_perf_flush_us, (unsigned long)s_perf_fmax_us,
+        (unsigned long)g_perf_draw_us,  (unsigned long)(frames * 1000U / win_ms),
+        (unsigned long)s_perf_mpu_n,
+        (unsigned long)(avg_ms10 / 10U), (unsigned long)(avg_ms10 % 10U),
+        (unsigned long)s_perf_mpu_max,   (unsigned long)s_perf_mpu_late,
+        (unsigned long)(s_perf_loops * 1000U / win_ms), (unsigned long)s_perf_free);
+    SEGGER_RTT_WriteString(0, buf);
+
+    s_perf_t0 = now;
+    s_perf_loops = 0; s_perf_free = 0;
+    s_perf_mpu_n = 0; s_perf_mpu_sum = 0; s_perf_mpu_max = 0; s_perf_mpu_late = 0;
+    s_perf_fmax_us = 0; s_perf_f0 = g_perf_frames;
+}
+#endif
+
 /* SysTick 配置：72MHz → 1ms 周期 → 重装载值 72000-1 */
 static void SystemClock_72MHz(void);
 static void SysTick_Init_1ms(void);
@@ -85,10 +139,19 @@ int main(void)
      * LFSR 全零是不动点，出块永远是 0 号块（2026-10-26 真机"方块都一样"根因） */
     Tetris_Reset();
 
+#if PERF_TRACE
+    s_perf_t0 = g_millis;
+    s_perf_f0 = g_perf_frames;
+#endif
+
     /* 主循环 */
     while (1)
     {
         uint32_t now = g_millis;
+#if PERF_TRACE
+        uint32_t perf_f0 = g_perf_frames;   /* 本迭代是否发生整帧刷 */
+        s_perf_loops++;
+#endif
 
         /* 按键 tick (1ms) */
         Key_Tick();
@@ -153,6 +216,9 @@ int main(void)
         /* MPU6050 采样 (10ms / 100Hz) */
         if (now - s_last_mpu_tick >= 10)
         {
+#if PERF_TRACE
+            perf_mpu_interval(now - s_last_mpu_tick);   /* 真实间隔，含被刷屏推后的部分 */
+#endif
             s_last_mpu_tick = now;
             uint8_t mpu_rc = MPU6050_UpdateEuler(NULL);
             static uint8_t mpu_fail_logged = 0;
@@ -200,6 +266,11 @@ int main(void)
             snprintf(buf, sizeof(buf), "[DIAG] PA0=%d (1=high=pressed)\n", Key_ReadLevel(KEY0));
             SEGGER_RTT_WriteString(0, buf);
         }
+#if PERF_TRACE
+        if (g_perf_flush_us > s_perf_fmax_us) s_perf_fmax_us = g_perf_flush_us;
+        if (g_perf_frames == perf_f0) s_perf_free++;       /* 本迭代没刷屏 = 轻迭代 */
+        perf_tick(g_millis);
+#endif
     }
 }
 

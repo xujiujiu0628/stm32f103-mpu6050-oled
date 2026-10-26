@@ -341,6 +341,8 @@ void My_OLED_WriteCommand(uint8_t Command);
 void My_OLED_WriteData(uint8_t *Data,uint8_t Count);
 void My_OLED_SetCursor(uint8_t X,uint8_t Page);
 void My_OLED_Update(void);
+void My_OLED_SetCursorFast(uint8_t X,uint8_t Page);
+void My_OLED_UpdateChunk(uint8_t Page,uint8_t Col,uint8_t Len);
 void My_OLED_Clear(void);
 void My_OLED_ClearArea(uint8_t X,uint8_t Y,uint8_t Width,uint8_t Height);
 void My_OLED_ShowChar(uint8_t X,uint8_t Y,char Char,uint8_t FontSize);
@@ -476,6 +478,39 @@ void My_OLED_Update(void)
   * @param  无
   * @retval 无
   */
+/**
+  * @brief  设置OLED显示位置（3 条命令合并成 1 个 I2C 事务）
+  * @note   My_OLED_SetCursor 每条命令独立起停（3 事务，约 0.8ms）；分段刷新每片都要
+  *         定位，事务开销占比过高。SSD1306 允许 Co=0 连续命令字节，故合并成一次。
+  */
+void My_OLED_SetCursorFast(uint8_t X,uint8_t Page)
+{
+	MyI2C_Start();
+	MyI2C_SendByte(0x78);
+	MyI2C_ReceiveAck();
+	MyI2C_SendByte(0x00);                       // Co=0, D/C#=0：后续字节全部作命令解释
+	MyI2C_ReceiveAck();
+	MyI2C_SendByte(0x00 | (X & 0x0F));          // 列地址低 4 位
+	MyI2C_ReceiveAck();
+	MyI2C_SendByte(0x10 | ((X & 0xF0) >> 4));   // 列地址高 4 位
+	MyI2C_ReceiveAck();
+	MyI2C_SendByte(0xB0 | Page);                // 页地址
+	MyI2C_ReceiveAck();
+	MyI2C_Stop();
+}
+
+/**
+  * @brief  分段刷新：把某页 [Col, Col+Len) 的缓冲内容发出去（Len <= 128）
+  * @note   整帧 1024 字节一次发完会阻塞约 131ms（2026-10-26 实测），主循环一个迭代
+  *         只剩一次采样机会；切成 64 字节一片后单次阻塞约 8ms，采样节拍回到 100Hz
+  *         量级。页内列地址由 SSD1306 自增，故同一页内可任意切片。
+  */
+void My_OLED_UpdateChunk(uint8_t Page,uint8_t Col,uint8_t Len)
+{
+	My_OLED_SetCursorFast(Col, Page);
+	My_OLED_WriteData(&My_OLED_DisplayBuf[Page][Col], Len);
+}
+
 void My_OLED_Clear(void)
 {
 	for(uint8_t j=0;j<8;j++)  // 遍历所有8页

@@ -15,6 +15,11 @@ typedef enum {
 /* 刷新节流 */
 #define OLEDS_REFRESH_MS   100U   // 10Hz
 
+/* 性能观测探针（第 1 步实测用；只读，供 main.c 的 PERF 心跳汇总打印） */
+extern volatile uint32_t g_perf_flush_us;    // 最近一帧整帧刷阻塞耗时 (us)
+extern volatile uint32_t g_perf_draw_us;     // 一次 排版+绘制（纯 RAM）耗时 (us)
+extern volatile uint32_t g_perf_frames;      // 累计整帧数
+
 /**
  * @brief  初始化：清屏 + 显示状态 0（六轴）+ 启动画面
  */

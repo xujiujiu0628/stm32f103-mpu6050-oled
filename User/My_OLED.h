@@ -5,6 +5,10 @@ void My_OLED_Init(void);
 void My_OLED_WriteCommand(uint8_t Command);
 void My_OLED_WriteData(uint8_t *Data,uint8_t Count);
 void My_OLED_SetCursor(uint8_t X,uint8_t Page);
+
+/* 分段刷新（2026-10-26 实测：整帧 131ms 阻塞 -> 切 64 字节一片约 8ms） */
+void My_OLED_SetCursorFast(uint8_t X,uint8_t Page);
+void My_OLED_UpdateChunk(uint8_t Page,uint8_t Col,uint8_t Len);
 void My_OLED_Update(void);
 void My_OLED_Clear(void);
 void My_OLED_ClearArea(uint8_t X,uint8_t Y,uint8_t Width,uint8_t Height);

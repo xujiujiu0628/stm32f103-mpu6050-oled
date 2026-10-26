@@ -53,7 +53,30 @@ gcc -std=c99 -Wall -Wextra -IUser -o build/test_brt_band.exe tests/test_brt_band
 gcc -std=c99 -Wall -Wextra -IUser -IUser/tetris -o build/test_tetris.exe tests/test_tetris.c User/tetris/tetris.c -lm && ./build/test_tetris.exe
 ```
 
-预期构建大小：text ~35KB，bss ~3.6KB（远小于 64KB flash 上限）。
+预期构建大小：text ~37KB，bss ~3.6KB（远小于 64KB flash 上限）。
+
+## 刷屏与主循环节拍（2026-10-26 真机实测）
+
+软 I2C 刷一整帧 SSD1306 是 1024 字节，实测**单次阻塞 132ms**——主循环一个迭代只剩一次采样机会。
+`User/oled_view/oled_view.c` 的 `OLEDS_SLICE_ENABLE` 决定刷屏方式（默认 1 = 切片）：
+
+| 指标（RTT `[PERF]` 心跳，1s 一行） | 整帧刷 `=0` | 切片刷 `=1`（默认） |
+|---|---|---|
+| 单次刷屏阻塞 | 132.1ms | 8.4ms（64 字节/片，16 片/帧） |
+| 排版+绘制（纯 RAM） | 2.2ms | 2.5ms |
+| 实际 MPU 采样率 | 7.3Hz（间隔均值 137ms） | 96~97Hz（均值 10.3ms，峰值 14ms） |
+| 主循环迭代 | 7 次/s（无"轻迭代"） | 102 次/s（97 次不刷屏） |
+| OLED 帧率 | 7fps | 5~6fps |
+
+- 帧率略降是切片的代价（每片多一次定位事务、片间被采样插队），换来采样率 13 倍提升。
+- `Tetris_Tick` 里 `+= 10 / -= 10` 是按"每次调用 = 10ms"写死的，采样率直接等于游戏节拍：
+  整帧刷时 500ms/格实际走 ~7s/格，切片后回到 0.5s/格——这是"手感不流畅"的真因。
+- `[PERF]` 各字段：`flush_us/max_us` 单次刷屏耗时、`draw_us` 排版绘制、`fps` 帧率、
+  `mpu n/avg/max/late` 实际采样次数与间隔（`late` = 间隔 >15ms 的次数）、
+  `loop` 主循环迭代率与其中"轻迭代"数。`main.c` 的 `PERF_TRACE 0` 可整体关掉。
+  全部整数定点打印（nano printf 不开 `%f`）。
+- 采集：`make rtt`。脚本 `build/rtt_grab.ps1` + `build/rtt.cfg` 在 gitignore 的 `build/` 下，
+  **`make clean` 会把它们一起删掉**（2026-10-26 踩过一次）。
 
 ## 显示状态
 

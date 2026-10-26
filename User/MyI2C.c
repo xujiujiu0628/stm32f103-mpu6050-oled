@@ -17,9 +17,12 @@
 #define MYI2C_SCL_PIN    GPIO_PIN_8     // SCL = PB8
 #define MYI2C_SDA_PORT   GPIOB          // SDA 引脚端口
 #define MYI2C_SDA_PIN    GPIO_PIN_9     // SDA = PB9
-#define MYI2C_DELAY_US   3U             // 每位延时(μs)：3≈330kHz（SSD1306 上限 400kHz，留时序裕量）；
-                                        // 2026-09-06 从 5 提速：OLED 整屏 1KB 传输从 ~25ms 降到 ~13ms，
-                                        // 缩短主循环阻塞，保住 MPU6050 采样率（否则被拉低到 ~30Hz 稀释互补滤波纠正）；
+#define MYI2C_DELAY_US   3U             // 每位延时(μs)。注意：一个 SCL 周期调 3 次延时函数
+                                        //（W_SDA + W_SCL(1) + W_SCL(0)），叠加 HAL_GPIO_WritePin 开销，
+                                        // 实测等效约 63kHz、128us/字节、整帧 132ms（2026-10-26 实测）。
+                                        // 本文件上方"3≈330kHz / 整帧 13ms"的旧说法是错的（没实测过），
+                                        // 已按真机数据订正；不要据此估主循环预算。
+                                        // 整帧阻塞已由 oled_view.c 的分片刷新（64 字节/片）摊平。
                                         // 若通信不稳（花屏/坏字）回调 5，再不行 10
 
 /**
