@@ -1,20 +1,18 @@
 /**
   ******************************************************************************
   * @file    key.c
-  * @brief   双键非阻塞输入（每键独立 v2 状态机 + 极性表驱动）
+  * @brief   双键全功能非阻塞输入（移植自教程工程 01-全功能按键实现非阻塞式程序）
   *
-  * @状态机（v2：时间窗消抖，2026-09-06 真机实测版）
-  *    K_IDLE ──pressed──▶ K_ARM_RISING ──稳定50ms──▶ K_PRESSED
-  *    K_ARM_RISING ──released（毛刺）──▶ K_IDLE
-  *    K_PRESSED ──released──▶ K_ARM_FALLING ──稳定50ms──▶ K_IDLE（发 SHORT）
-  *    K_ARM_FALLING ──pressed（毛刺）──▶ K_PRESSED（长按计时不中断）
-  *    K_PRESSED ──按住≥1000ms──▶ 发 LONG（一次性）
+  * @状态机（五态，20ms 扫描）
+  *    IDLE ──按下──▶ PRESSED ──按住满 1s──▶ LONG（发 KEY_LONG，随后每 50ms 发 REPEAT）
+  *    PRESSED ──释放──▶ RELEASED ──100ms 内无二次按下──▶ IDLE（发 KEY_SINGLE）
+  *    RELEASED ──再次按下──▶ DOUBLE（发 KEY_DOUBLE）──释放──▶ IDLE
+  *    LONG ──释放──▶ IDLE
   *
-  * @多键化（2026-09-12，需求：PB15 长按触发陀螺仪重校准）
-  *    单键结构泛化为 cfg[] 表 + per-key 状态数组；"按下"判定经极性宏折算
-  *    （press_level），01-全功能按键工程的 Key_Num/状态机思想、弃其
-  *    双击/连发（本项目无需求，YAGNI——登记于 FSD §6）。
-  *    事件信箱 per-key 独立：两键同时操作不互相吞事件。
+  * @与教程工程差异
+  *    教程用"每次调用减 1"的计数值（假定严格 1ms 调用）；本工程主循环非严格
+  *    节拍，改为 g_millis 绝对时间戳比较。标志位、状态迁移、时间常数不变。
+  *    键位配置沿用本工程极性表（KEY0=PA0 高有效，KEY1=PB15 低有效）。
   ******************************************************************************
   */
 #include "key.h"
@@ -35,21 +33,23 @@ static const Key_Cfg_t s_cfg[KEY_COUNT] = {
 };
 
 typedef enum {
-    K_IDLE = 0,        // 稳定未按下
-    K_ARM_RISING,      // 检测到按下电平，等 50ms 稳定确认
-    K_PRESSED,         // 已确认按下，计时长短按
-    K_ARM_FALLING,     // 检测到释放电平，等 50ms 稳定确认
+    K_IDLE = 0,
+    K_PRESSED,
+    K_RELEASED,
+    K_DOUBLE,
+    K_LONG,
 } Key_State_t;
 
 typedef struct {
     Key_State_t state;
-    uint32_t    change_ms;      // 最近一次电平变化时间
-    uint32_t    press_ms;       // 确认按下时刻（长按计时起点）
-    uint8_t     long_fired;     // 长按事件已发（防重复）
-    KeyEvent_t  pending;        // 事件信箱（取走即清）
+    uint8_t     flags;      /* KEY_SINGLE/DOUBLE/LONG/REPEAT/HOLD/DOWN/UP */
+    uint8_t     curr;       /* 本次扫描电平（1=按下） */
+    uint8_t     prev;       /* 上次扫描电平 */
+    uint32_t    timer_ms;   /* 当前状态超时时刻 */
 } Key_Rt_t;
 
 static Key_Rt_t s_rt[KEY_COUNT];
+static uint32_t s_last_scan_ms;
 
 /**
  * @brief  读指定键按下状态（1=按下，极性已折算）
@@ -76,12 +76,13 @@ void Key_Init(void)
         gpio.Speed = GPIO_SPEED_FREQ_HIGH;
         HAL_GPIO_Init(s_cfg[i].port, &gpio);
 
-        s_rt[i].state      = K_IDLE;
-        s_rt[i].pending    = KEY_EVENT_NONE;
-        s_rt[i].long_fired = 0;
-        s_rt[i].press_ms   = 0;
-        s_rt[i].change_ms  = 0;
+        s_rt[i].state    = K_IDLE;
+        s_rt[i].flags    = 0;
+        s_rt[i].curr     = 0;
+        s_rt[i].prev     = 0;
+        s_rt[i].timer_ms = 0;
     }
+    s_last_scan_ms = g_millis;
 }
 
 void Key_Tick(void)
@@ -89,81 +90,103 @@ void Key_Tick(void)
     uint32_t now = g_millis;
     uint8_t i;
 
+    if (now - s_last_scan_ms < KEY_SCAN_MS)
+    {
+        return;
+    }
+    s_last_scan_ms = now;
+
     for (i = 0; i < KEY_COUNT; i++)
     {
         Key_Rt_t *rt = &s_rt[i];
-        uint8_t pressed = key_raw_pressed((Key_Num)i);
 
+        rt->prev = rt->curr;
+        rt->curr = key_raw_pressed((Key_Num)i);
+
+        /* 电平类标志 */
+        if (rt->curr) rt->flags |= KEY_HOLD;
+        else          rt->flags &= (uint8_t)~KEY_HOLD;
+        if (rt->curr && !rt->prev) rt->flags |= KEY_DOWN;
+        if (!rt->curr && rt->prev) rt->flags |= KEY_UP;
+
+        /* 状态机 */
         switch (rt->state)
         {
         case K_IDLE:
-            if (pressed)
+            if (rt->curr)
             {
-                rt->state     = K_ARM_RISING;
-                rt->change_ms = now;
-            }
-            break;
-
-        case K_ARM_RISING:              // 等按下电平稳定 ≥50ms 才确认
-            if (!pressed)
-            {
-                rt->state = K_IDLE;     // 毛刺，回退
-            }
-            else if (now - rt->change_ms >= KEY_DEBOUNCE_MS)
-            {
-                rt->state      = K_PRESSED;
-                rt->press_ms   = now;
-                rt->long_fired = 0;
+                rt->timer_ms = now + KEY_TIME_LONG_MS;
+                rt->state    = K_PRESSED;
             }
             break;
 
         case K_PRESSED:
-            if (!pressed)
+            if (!rt->curr)                              /* 释放：进入双击窗口 */
             {
-                rt->state     = K_ARM_FALLING;
-                rt->change_ms = now;
+                rt->timer_ms = now + KEY_TIME_DOUBLE_MS;
+                rt->state    = K_RELEASED;
             }
-            else if (!rt->long_fired && (now - rt->press_ms) >= KEY_LONG_MS)
+            else if (now >= rt->timer_ms)               /* 按住满 1s：发 LONG */
             {
-                rt->long_fired = 1;
-                rt->pending    = KEY_EVENT_LONG;  // 按住 1s：立即发 LONG
+                rt->flags   |= KEY_LONG;
+                rt->timer_ms = now + KEY_TIME_REPEAT_MS;
+                rt->state    = K_LONG;
             }
             break;
 
-        case K_ARM_FALLING:             // 等释放电平稳定 ≥50ms 才确认
-            if (pressed)
+        case K_RELEASED:
+            if (rt->curr)                               /* 窗口内再按：双击 */
             {
-                rt->state = K_PRESSED;  // 毛刺回按下：长按计时不中断
+                rt->flags |= KEY_DOUBLE;
+                rt->state  = K_DOUBLE;
             }
-            else if (now - rt->change_ms >= KEY_DEBOUNCE_MS)
+            else if (now >= rt->timer_ms)               /* 窗口超时：确认单击 */
             {
-                if (!rt->long_fired)
-                {
-                    rt->pending = KEY_EVENT_SHORT;
-                }
+                rt->flags |= KEY_SINGLE;
+                rt->state  = K_IDLE;
+            }
+            break;
+
+        case K_DOUBLE:
+            if (!rt->curr) rt->state = K_IDLE;
+            break;
+
+        case K_LONG:
+            if (!rt->curr)                              /* 释放：回空闲 */
+            {
                 rt->state = K_IDLE;
             }
+            else if (now >= rt->timer_ms)               /* 连发 */
+            {
+                rt->flags   |= KEY_REPEAT;
+                rt->timer_ms = now + KEY_TIME_REPEAT_MS;
+            }
+            break;
+
+        default:
+            rt->state = K_IDLE;
             break;
         }
     }
 }
 
-KeyEvent_t Key_GetEvent(Key_Num keyNum)
+uint8_t Key_Check(Key_Num keyNum, uint8_t Flag)
 {
-    if (keyNum >= KEY_COUNT)
+    if (keyNum >= KEY_COUNT) return 0;
+
+    if (s_rt[keyNum].flags & Flag)
     {
-        return KEY_EVENT_NONE;
+        if (Flag != KEY_HOLD)
+        {
+            s_rt[keyNum].flags &= (uint8_t)~Flag;   /* 取走即清 */
+        }
+        return 1;
     }
-    KeyEvent_t ev = s_rt[keyNum].pending;
-    s_rt[keyNum].pending = KEY_EVENT_NONE;
-    return ev;
+    return 0;
 }
 
 uint8_t Key_ReadLevel(Key_Num keyNum)
 {
-    if (keyNum >= KEY_COUNT)
-    {
-        return 0;
-    }
+    if (keyNum >= KEY_COUNT) return 0;
     return key_raw_pressed(keyNum);
 }

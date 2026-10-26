@@ -93,28 +93,32 @@ int main(void)
         /* 按键 tick (1ms) */
         Key_Tick();
 
-        /* KEY0 (PA0): 短按循环页 / 长按关屏 —— 语义不变 */
-        KeyEvent_t ev0 = Key_GetEvent(KEY0);
-        if (ev0 != KEY_EVENT_NONE)
+        /* KEY0 (PA0): 单击循环页 / 长按关屏 —— 全功能键标志位接口 */
         {
-            OledView_HandleKey(ev0 == KEY_EVENT_SHORT, ev0 == KEY_EVENT_LONG);
-            /* 屏开关与亮度联动：关屏期间只记档不发对比度，唤醒补发 */
-            AdcBrt_ScreenOn(OledView_GetState() != OLEDS_OFF);
-            /* RTT 记录按键事件（节流在 HandleKey 之外，避免事件丢失） */
-            const char *evname = (ev0 == KEY_EVENT_SHORT) ? "SHORT" : "LONG";
-            char buf[64];
-            snprintf(buf, sizeof(buf), "[KEY] %s state=%d\n", evname, OledView_GetState());
-            SEGGER_RTT_WriteString(0, buf);
+            uint8_t k0_short = Key_Check(KEY0, KEY_SINGLE);
+            uint8_t k0_long  = Key_Check(KEY0, KEY_LONG);
+            if (k0_short || k0_long)
+            {
+                OledView_HandleKey(k0_short, k0_long);
+                /* 屏开关与亮度联动：关屏期间只记档不发对比度，唤醒补发 */
+                AdcBrt_ScreenOn(OledView_GetState() != OLEDS_OFF);
+                {
+                    char buf[64];
+                    snprintf(buf, sizeof(buf), "[KEY] %s state=%d\n",
+                             k0_long ? "LONG" : "SHORT", OledView_GetState());
+                    SEGGER_RTT_WriteString(0, buf);
+                }
+            }
         }
 
-        /* KEY1 (PB15, 按下=低): 短按 = 方块旋转；长按 = 陀螺仪重校准 + 重开一局 */
-        KeyEvent_t ev1 = Key_GetEvent(KEY1);
-        if (ev1 == KEY_EVENT_SHORT)
+        /* KEY1 (PB15): 单击 = 方块旋转；长按 = 陀螺仪重校准 + 重开一局
+         * （状态机互斥：长按触发后不会补发单击） */
+        if (Key_Check(KEY1, KEY_SINGLE))
         {
             Tetris_Rotate();
             SEGGER_RTT_WriteString(0, "[KEY] PB15 short: rotate\n");
         }
-        else if (ev1 == KEY_EVENT_LONG)
+        if (Key_Check(KEY1, KEY_LONG))
         {
             char buf[64];
             /* 先刷屏再采样: 软 I2C 整帧 ~13ms 阻塞会污染校准采样 dt */
