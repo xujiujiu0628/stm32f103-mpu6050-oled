@@ -28,12 +28,14 @@ STM32F103C8T6（Blue Pill）通过 **软件 I2C 读取 MPU6050 6 轴数据**，�
 | 按键另一脚 | 3V3 | — |
 | MAX7219 VCC | **5V**（datasheet 下限 4.0V；**接 3V3 不工作**——2026-10-26 真机踩坑，点阵全黑） | — |
 | MAX7219 GND | GND | — |
-| MAX7219 DIN | **PA7** | SPI1_MOSI |
+| MAX7219 DIN | **PA7** | SPI1_MOSI。**必须接标 DIN 的那一排针**（另一排 DOUT 是级联输出，接上必然全黑——2026-10-26 真机踩坑） |
 | MAX7219 CLK | **PA5** | SPI1_SCK（9MHz，CPOL=0/CPHA=1） |
 | MAX7219 CS | **PA4** | 软件片选，低有效 |
 | ST-Link | SWDIO/SWCLK/3V3/GND | 烧录调试 |
 
 > 引脚无冲突；若换引脚：MPU6050 改 `User/mpu6050/mpu6050_i2c.c` 顶部宏，OLED 改 `User/MyI2C.c` 顶部宏。
+>
+> ⚠️ **MAX7219 模块选排针**：不少 8x8 模块出厂只焊了 **DOUT 输出排**（`VCC GND DOUT CS CLK`），输入排在另一侧只有空焊孔（`VCC GND DIN CS CLK`）。接在 DOUT 排上必然全黑（2026-10-26 真机踩坑两次：先误判 3V3 供电，后确认接线在输出排）。数据必须走 DIN 排，没焊针就飞线/补焊。
 
 ## 构建与烧录
 
