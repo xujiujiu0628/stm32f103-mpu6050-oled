@@ -189,6 +189,12 @@ test: | $(BUILD_DIR)
 	$(BUILD_DIR)/test_tetris.exe
 
 #######################################
+# RTT 采集（20s，脚本在 build/rtt_grab.ps1；不含 build/ 时先手工创建）
+#######################################
+rtt:
+	powershell -NoProfile -Command "& '$(CURDIR)/build/rtt_grab.ps1' | Select-String 'cur=(\d+) next=(\d+)' | ForEach-Object { $$_.Matches[0].Value } | Select-Object -Unique"
+
+#######################################
 # clean up
 #######################################
 clean:

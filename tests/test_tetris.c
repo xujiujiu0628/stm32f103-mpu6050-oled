@@ -30,12 +30,20 @@ static int frame_get(const uint8_t f[8], int x, int y)
     return (f[y] >> (7 - x)) & 1;
 }
 
-/* 推进 n 个 tick（10ms 步长），喂固定姿态 */
-static void tick_n(float roll, float ax, float ay, float az, uint32_t n)
+/* 推进 n 个 tick（10ms 步长），喂固定姿态（roll=0：软降关） */
+static void tick_n(float tilt, float ax, float ay, float az, uint32_t n)
 {
     uint32_t i;
     for (i = 0; i < n; i++)
-        Tetris_Tick(roll, ax, ay, az);
+        Tetris_Tick(tilt, 0.0f, ax, ay, az);
+}
+
+/* 带 roll 的推进（软降测试用） */
+static void tick_nr(float tilt, float roll, float ax, float ay, float az, uint32_t n)
+{
+    uint32_t i;
+    for (i = 0; i < n; i++)
+        Tetris_Tick(tilt, roll, ax, ay, az);
 }
 
 /* 把棋盘指定行置为给定字节（测试锚点：绕开随机出块直捣消行路径） */
@@ -172,6 +180,19 @@ int main(void)
             for (i = 0; i < 8; i++) diff |= (snap[i] != f2[i]);
             CHECK(diff, "重力下落帧随时间变化");
         }
+    }
+
+    /* --- 软降：roll 越 ±20° 后下落显著加速（1s 内落底锁定） --- */
+    {
+        Tetris_Reset();
+        set_board((const uint8_t[8]){0,0,0,0,0,0,0,0});
+        tick_nr(0.0f, 30.0f, 0, 0, 1.0f, 150);   /* 1.5s @60ms/格 */
+        CHECK(Tetris_GetFrame()[7] != 0, "roll 30° 软降：底行出现锁定块");
+
+        Tetris_Reset();
+        set_board((const uint8_t[8]){0,0,0,0,0,0,0,0});
+        tick_n(0.0f, 0, 0, 1.0f, 150);           /* 同样 1.5s 正常速度 */
+        CHECK(Tetris_GetFrame()[7] == 0, "正常速度 1.5s 还到不了底行");
     }
 
     /* --- 帧位序：bit7=最左列（锚钉防倒装漂移） --- */

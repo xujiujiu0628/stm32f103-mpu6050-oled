@@ -17,9 +17,12 @@
 #define TETRIS_TAP_RELEASE_G     1.2f
 #define TETRIS_TAP_COOLDOWN_MS   200U
 
-/* 重力下落周期（ms/格）：500ms 起步，每消 5 行快 100ms，下限 150ms */
+/* 重力下落周期（ms/格）：500ms 起步，每消 5 行快 100ms，下限 150ms
+ * 软降：roll（左右滚转）超过 ±20° 时以 60ms/格 快速下落 */
 #define TETRIS_DROP_BASE_MS      500U
 #define TETRIS_DROP_MIN_MS       150U
+#define TETRIS_SOFTDROP_ROLL_DEG 20.0f
+#define TETRIS_DROP_SOFT_MS      60U
 
 /**
  * @brief  重置游戏：清棋盘、清分、出第一块
@@ -27,11 +30,17 @@
 void Tetris_Reset(void);
 
 /**
+ * @brief  上电播种：用传感器噪声/时间戳打散出块序列（非 0 才生效）
+ */
+void Tetris_Seed(uint32_t seed);
+
+/**
  * @brief  游戏主 tick（10ms 节拍，主循环调用）
- * @param  tilt_deg  当前倾斜角（pitch，度）
+ * @param  tilt_deg  倾斜角（pitch，度）—— 左右移动
+ * @param  roll_deg  滚转角（度）—— |roll| ≥ 20° 时软降加速
  * @param  ax/ay/az  加速度（g）
  */
-void Tetris_Tick(float tilt_deg, float ax, float ay, float az);
+void Tetris_Tick(float tilt_deg, float roll_deg, float ax, float ay, float az);
 
 /**
  * @brief  手动侧移（左/右），成功 1 / 撞墙或撞块 0
@@ -56,6 +65,10 @@ uint16_t Tetris_GetScore(void);
 uint16_t Tetris_GetLines(void);
 const uint8_t *Tetris_GetNextShape(void);   /* 下一块 8 字节点阵（居中） */
 uint8_t Tetris_IsGameOver(void);
+
+/* 当前/下一块的形状编号（0..6，调试/日志用） */
+uint8_t Tetris_GetCurrentShapeId(void);
+uint8_t Tetris_GetNextShapeId(void);
 
 /* 测试钩子：直接覆写棋盘（绕开随机出块，锚定消行/计分路径） */
 void Tetris_DebugSetBoard(const uint8_t rows[8]);

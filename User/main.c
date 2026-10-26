@@ -72,6 +72,19 @@ int main(void)
     SEGGER_RTT_WriteString(0, "[BOOT] PB15 long = recalibrate gyro\n");
     SEGGER_RTT_WriteString(0, "[BOOT] TETRIS page 3: tilt=move tap=rotate/restart\n");
 
+    /* 出块播种：传感器噪声 + 上电时长（否则每次上电从同一序列开始） */
+    {
+        MPU6050_RawData_t sr;
+        uint32_t seed = g_millis ^ 0x9E3779B9u;
+        if (MPU6050_ReadRaw(&sr) == 0)
+            seed ^= (uint32_t)(sr.ax * 1e6f) ^ ((uint32_t)(sr.ay * 1e6f) << 8)
+                  ^ ((uint32_t)(sr.az * 1e6f) << 16);
+        Tetris_Seed(seed);
+    }
+    /* 上电首次开局：必须显式 Reset——否则 s_rng 保持 BSS 零值，
+     * LFSR 全零是不动点，出块永远是 0 号块（2026-10-26 真机"方块都一样"根因） */
+    Tetris_Reset();
+
     /* 主循环 */
     while (1)
     {
@@ -135,7 +148,7 @@ int main(void)
             {
                 const MPU6050_RawData_t *raw = MPU6050_GetRaw();
                 const MPU6050_Euler_t   *eul = MPU6050_GetEuler();
-                Tetris_Tick(eul->pitch, raw->ax, raw->ay, raw->az);
+                Tetris_Tick(eul->pitch, eul->roll, raw->ax, raw->ay, raw->az);
                 Matrix7219_ShowFrame(Tetris_GetFrame());
             }
         }
@@ -151,10 +164,11 @@ int main(void)
             const MPU6050_Euler_t   *e  = MPU6050_GetEuler();
             char buf[128];
             snprintf(buf, sizeof(buf),
-                "[STATE=%d last=%d] ax=%.2f ay=%.2f az=%.2f gx=%.1f gy=%.1f gz=%.1f roll=%.1f pitch=%.1f yaw=%.1f\n",
+                "[STATE=%d last=%d] ax=%.2f ay=%.2f az=%.2f gx=%.1f gy=%.1f gz=%.1f roll=%.1f pitch=%.1f yaw=%.1f cur=%u next=%u\n",
                 OledView_GetState(), 0,
                 r->ax, r->ay, r->az, r->gx, r->gy, r->gz,
-                e->roll, e->pitch, e->yaw);
+                e->roll, e->pitch, e->yaw,
+                (unsigned)Tetris_GetCurrentShapeId(), (unsigned)Tetris_GetNextShapeId());
             SEGGER_RTT_WriteString(0, buf);
         }
 

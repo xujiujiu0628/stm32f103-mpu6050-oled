@@ -144,13 +144,21 @@ void Tetris_Reset(void)
     s_score = 0;
     s_lines = 0;
     s_game_over = 0;
-    s_rng = 0xACE1u;
+    /* RNG 跨局持续演进：只在首次使用时给固定种子，重开不再回溯同一序列
+     * （原来每次 Reset 写死 0xACE1 → 每局出块完全一样，2026-10-26 真机反馈）
+     * 上电变异由 Tetris_Seed() 用传感器噪声注入 */
+    if (!s_rng) s_rng = 0xACE1u;
     s_tilt_armed = 1;
     s_tap_pressed = 0;
     s_tap_cooldown_ms = 0;
     s_drop_acc_ms = 0;
     spawn_piece(&s_cur);
     spawn_piece(&s_next);
+}
+
+void Tetris_Seed(uint32_t seed)
+{
+    if (seed) s_rng ^= seed;
 }
 
 uint8_t Tetris_ShiftLeft(void)
@@ -201,6 +209,8 @@ const uint8_t *Tetris_GetFrame(void)
 uint16_t Tetris_GetScore(void)     { return s_score; }
 uint16_t Tetris_GetLines(void)     { return s_lines; }
 uint8_t  Tetris_IsGameOver(void)   { return s_game_over; }
+uint8_t  Tetris_GetCurrentShapeId(void) { return s_cur.shape; }
+uint8_t  Tetris_GetNextShapeId(void)    { return s_next.shape; }
 
 const uint8_t *Tetris_GetNextShape(void)
 {
@@ -221,7 +231,7 @@ void Tetris_DebugSetBoard(const uint8_t rows[8])
     for (i = 0; i < 8; i++) s_board[i] = rows[i];
 }
 
-void Tetris_Tick(float tilt_deg, float ax, float ay, float az)
+void Tetris_Tick(float tilt_deg, float roll_deg, float ax, float ay, float az)
 {
     float norm;
     float tilt = TETRIS_TILT_INVERT ? -tilt_deg : tilt_deg;
@@ -276,10 +286,13 @@ void Tetris_Tick(float tilt_deg, float ax, float ay, float az)
         s_tap_pressed = 0;
     }
 
-    /* --- 重力下落：周期随消行数缩短（每 5 行快 100ms，下限 TETRIS_DROP_MIN_MS） --- */
+    /* --- 重力下落：周期随消行数缩短（每 5 行快 100ms，下限 TETRIS_DROP_MIN_MS）
+     *     软降：roll 超过 ±20° 时 60ms/格（左右滚转板子 = 加速下落） --- */
     {
         uint32_t period = TETRIS_DROP_BASE_MS - (s_lines / 5) * 100U;
         if (period < TETRIS_DROP_MIN_MS) period = TETRIS_DROP_MIN_MS;
+        if (roll_deg >= TETRIS_SOFTDROP_ROLL_DEG || roll_deg <= -TETRIS_SOFTDROP_ROLL_DEG)
+            period = TETRIS_DROP_SOFT_MS;
         if (s_drop_acc_ms >= period)
         {
             s_drop_acc_ms = 0;
