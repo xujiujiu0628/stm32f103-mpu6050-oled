@@ -182,10 +182,13 @@ flash: $(BUILD_DIR)/$(TARGET).bin
 # host tests（MSYS2 mingw64 gcc，纯逻辑层单测）
 #######################################
 HOST_CC = C:/msys64/mingw64/bin/gcc.exe
+# mingw gcc 的 cc1/as 靠 PATH 找同目录 DLL，缺了会静默 exit 1；TMP 也指到 build/，
+# 避免回退 C:\WINDOWS
+HOST_ENV = PATH=/c/msys64/mingw64/bin:$$PATH TMP=$(shell cygpath -m $(CURDIR))/$(BUILD_DIR) TEMP=$(shell cygpath -m $(CURDIR))/$(BUILD_DIR)
 test: | $(BUILD_DIR)
-	$(HOST_CC) -std=c99 -Wall -Wextra -IUser -o $(BUILD_DIR)/test_brt_band.exe tests/test_brt_band.c User/brt_band.c
+	$(HOST_ENV) $(HOST_CC) -pipe -std=c99 -Wall -Wextra -IUser -o $(BUILD_DIR)/test_brt_band.exe tests/test_brt_band.c User/brt_band.c
 	$(BUILD_DIR)/test_brt_band.exe
-	$(HOST_CC) -std=c99 -Wall -Wextra -IUser -IUser/tetris -o $(BUILD_DIR)/test_tetris.exe tests/test_tetris.c User/tetris/tetris.c -lm
+	$(HOST_ENV) $(HOST_CC) -pipe -std=c99 -Wall -Wextra -IUser -IUser/tetris -o $(BUILD_DIR)/test_tetris.exe tests/test_tetris.c User/tetris/tetris.c -lm
 	$(BUILD_DIR)/test_tetris.exe
 
 #######################################

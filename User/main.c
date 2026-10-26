@@ -113,15 +113,16 @@ int main(void)
 
         /* KEY1 (PB15): 单击 = 方块旋转；长按 = 陀螺仪重校准 + 重开一局
          * （状态机互斥：长按触发后不会补发单击） */
+        /* 按键按下即静音敲击检测 300ms：按键震动不能被当成"敲击旋转" */
+        if (Key_Check(KEY1, KEY_DOWN) || Key_Check(KEY0, KEY_DOWN))
+        {
+            Tetris_MuteTap(300);
+        }
+
         if (Key_Check(KEY1, KEY_SINGLE))
         {
             Tetris_Rotate();
             SEGGER_RTT_WriteString(0, "[KEY] PB15 short: rotate\n");
-        }
-        if (Key_Check(KEY1, KEY_DOUBLE))
-        {
-            Tetris_HardDrop();
-            SEGGER_RTT_WriteString(0, "[KEY] PB15 double: hard drop\n");
         }
         if (Key_Check(KEY1, KEY_LONG))
         {

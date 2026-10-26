@@ -57,9 +57,9 @@ uint8_t Tetris_ShiftRight(void);
 void Tetris_Rotate(void);
 
 /**
- * @brief  硬降：当前块直接落到底并立即锁定（PB15 双击）
+ * @brief  静音敲击检测 ms 毫秒（按键按下时调用，避免按键震动被当成敲击旋转）
  */
-void Tetris_HardDrop(void);
+void Tetris_MuteTap(uint16_t ms);
 
 /**
  * @brief  渲染帧：棋盘 + 活动块合并后 8 字节（bit7=最左列）

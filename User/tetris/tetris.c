@@ -48,6 +48,7 @@ static uint32_t s_rng;                 /* LFSR 状态（取块） */
 static uint8_t  s_tilt_armed;          /* 倾斜触发武装 */
 static uint8_t  s_tap_pressed;         /* 敲击按下态（|a| 尚未回落） */
 static uint32_t s_tap_cooldown_ms;     /* 敲击冷却倒计时 */
+static uint16_t s_tap_mute_ms;         /* 敲击检测静音倒计时（按键震动抑制） */
 
 /* 重力 */
 static uint32_t s_drop_acc_ms;
@@ -196,12 +197,9 @@ void Tetris_Rotate(void)
     }
 }
 
-void Tetris_HardDrop(void)
+void Tetris_MuteTap(uint16_t ms)
 {
-    if (s_game_over) return;
-    while (!collide(&s_cur, s_cur.x, s_cur.y + 1))
-        s_cur.y++;
-    lock_piece();
+    s_tap_mute_ms = ms;
 }
 
 const uint8_t *Tetris_GetFrame(void)
@@ -259,6 +257,7 @@ void Tetris_Tick(float tilt_deg, float roll_deg, float ax, float ay, float az)
     float tilt = TETRIS_TILT_INVERT ? -tilt_deg : tilt_deg;
 
     if (s_tap_cooldown_ms) s_tap_cooldown_ms -= 10;
+    if (s_tap_mute_ms >= 10) s_tap_mute_ms -= 10; else s_tap_mute_ms = 0;
     if (s_drop_acc_ms < 0xFFFFFFFFu) s_drop_acc_ms += 10;
 
     norm = sqrtf(ax * ax + ay * ay + az * az);
@@ -294,8 +293,8 @@ void Tetris_Tick(float tilt_deg, float roll_deg, float ax, float ay, float az)
         s_tilt_armed = 1;
     }
 
-    /* --- 敲击旋转：尖峰触发，回落武装 + 冷却双闸 --- */
-    if (!s_tap_pressed && norm >= TETRIS_TAP_PEAK_G && !s_tap_cooldown_ms)
+    /* --- 敲击旋转：尖峰触发，回落武装 + 冷却双闸；按键震动期间静音 --- */
+    if (!s_tap_pressed && !s_tap_mute_ms && norm >= TETRIS_TAP_PEAK_G && !s_tap_cooldown_ms)
     {
         s_tap_pressed = 1;
         Tetris_Rotate();
