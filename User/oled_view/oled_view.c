@@ -167,7 +167,7 @@ static void render_tetris(void)
     if (Tetris_IsGameOver())
         My_OLED_ShowString(0, 56, (char *)"NEW GAME...", 6);
     else
-        My_OLED_ShowString(0, 56, (char *)"TILT MOVE TAP ROT", 6);
+        My_OLED_ShowString(0, 56, (char *)"TILT:MOVE PB15:ROT", 6);
 
     My_OLED_Update();
 }

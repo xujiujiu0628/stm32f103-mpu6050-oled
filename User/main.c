@@ -107,9 +107,14 @@ int main(void)
             SEGGER_RTT_WriteString(0, buf);
         }
 
-        /* KEY1 (PB15, 按下=低): 长按 = 陀螺仪重校准（短按忽略） */
+        /* KEY1 (PB15, 按下=低): 短按 = 方块旋转；长按 = 陀螺仪重校准 + 重开一局 */
         KeyEvent_t ev1 = Key_GetEvent(KEY1);
-        if (ev1 == KEY_EVENT_LONG)
+        if (ev1 == KEY_EVENT_SHORT)
+        {
+            Tetris_Rotate();
+            SEGGER_RTT_WriteString(0, "[KEY] PB15 short: rotate\n");
+        }
+        else if (ev1 == KEY_EVENT_LONG)
         {
             char buf[64];
             /* 先刷屏再采样: 软 I2C 整帧 ~13ms 阻塞会污染校准采样 dt */
