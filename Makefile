@@ -47,6 +47,8 @@ User/brt_band.c \
 User/adc_brt.c \
 User/key/key.c \
 User/oled_view/oled_view.c \
+User/matrix/matrix7219.c \
+User/tetris/tetris.c \
 ThirdParty/RTT/SEGGER_RTT.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_cortex.c \
@@ -56,6 +58,7 @@ Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_dma.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio_ex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_rcc.c \
+Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_spi.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_rcc_ex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash_ex.c \
@@ -105,6 +108,8 @@ C_INCLUDES =  \
 -IUser/mpu6050 \
 -IUser/oled_view \
 -IUser/key \
+-IUser/matrix \
+-IUser/tetris \
 -IThirdParty/RTT \
 -IDrivers/STM32F1xx_HAL_Driver/Inc \
 -IDrivers/STM32F1xx_HAL_Driver/Inc/Legacy \

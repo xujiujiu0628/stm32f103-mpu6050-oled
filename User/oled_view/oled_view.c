@@ -19,6 +19,7 @@
 #include "oled_view.h"
 #include "My_OLED.h"
 #include "mpu6050.h"
+#include "tetris.h"
 #include "stm32f1xx_hal.h"
 #include <stdio.h>
 #include <math.h>
@@ -134,6 +135,43 @@ static void render_attitude(void)
 
 /* ---------------- 关屏/开屏薄封装 ---------------- */
 
+/* 页面 3：俄罗斯方块副屏 —— 下一块预览 + 分数/行数/速度 */
+static void render_tetris(void)
+{
+    char buf[24];
+    My_OLED_Clear();
+    My_OLED_ShowString(0, 0, (char *)"TETRIS", 6);
+
+    /* 下一块预览：8x8 帧取 4x4 有效区放大到 OLED 上 16x16 区域（每点 2x2） */
+    {
+        const uint8_t *nf = Tetris_GetNextShape();
+        uint8_t by, bx;
+        for (by = 0; by < 8; by++)
+            for (bx = 0; bx < 8; bx++)
+                if ((nf[by] >> (7 - bx)) & 1)
+                {
+                    /* 画 2x2 实心块：(76+2bx, 16+2by) 起，屏幕右半区 */
+                    My_OLED_DrawPoint(76 + 2 * bx,     16 + 2 * by);
+                    My_OLED_DrawPoint(76 + 2 * bx + 1, 16 + 2 * by);
+                    My_OLED_DrawPoint(76 + 2 * bx,     16 + 2 * by + 1);
+                    My_OLED_DrawPoint(76 + 2 * bx + 1, 16 + 2 * by + 1);
+                }
+    }
+    My_OLED_ShowString(64, 8, (char *)"NEXT", 6);
+
+    sprintf(buf, "Score:%u", (unsigned)Tetris_GetScore());
+    My_OLED_ShowString(0, 24, buf, 6);
+    sprintf(buf, "Lines:%u", (unsigned)Tetris_GetLines());
+    My_OLED_ShowString(0, 40, buf, 6);
+
+    if (Tetris_IsGameOver())
+        My_OLED_ShowString(0, 56, (char *)"TAP = RESTART", 6);
+    else
+        My_OLED_ShowString(0, 56, (char *)"TILT MOVE TAP ROT", 6);
+
+    My_OLED_Update();
+}
+
 void OledView_DisplayOff(void)
 {
     My_OLED_WriteCommand(0xAE);   // SSD1306 关显示
@@ -236,10 +274,10 @@ void OledView_HandleKey(uint8_t short_press, uint8_t long_press)
         return;
     }
 
-    /* 短按：循环 0→1→2→0 */
+    /* 短按：循环 0→1→2→3→0 */
     if (short_press)
     {
-        s_state = (OledState_t)((s_state + 1) % 3);  // 0,1,2 循环
+        s_state = (OledState_t)((s_state + 1) % 4);  // 0,1,2,3 循环
         OledView_ForceRefresh();
     }
 }
@@ -271,6 +309,7 @@ void OledView_Tick(void)
     case OLEDS_RAW:      render_raw();      break;
     case OLEDS_EULER:    render_euler();    break;
     case OLEDS_ATTITUDE: render_attitude(); break;
+    case OLEDS_TETRIS:   render_tetris();   break;
     default: break;
     }
 }

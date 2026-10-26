@@ -46,6 +46,7 @@
 #define HAL_RCC_MODULE_ENABLED
 #define HAL_DMA_MODULE_ENABLED   /* F1 的 hal_adc.h 句柄内嵌 DMA_HandleTypeDef，必须连带启用 */
 #define HAL_ADC_MODULE_ENABLED
+#define HAL_SPI_MODULE_ENABLED
 
 /* ########################## Oscillator Values adaptation ####################*/
 /**

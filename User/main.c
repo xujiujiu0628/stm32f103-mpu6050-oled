@@ -17,6 +17,8 @@
 #include "key.h"
 #include "oled_view.h"
 #include "adc_brt.h"
+#include "matrix7219.h"
+#include "tetris.h"
 #include "SEGGER_RTT.h"
 #include <stdio.h>
 
@@ -55,7 +57,9 @@ int main(void)
     Key_Init();
     AdcBrt_Init();
     OledView_Init();
+    Matrix7219_Init();
     SEGGER_RTT_WriteString(0, "[BOOT] PB15 long = recalibrate gyro\n");
+    SEGGER_RTT_WriteString(0, "[BOOT] TETRIS page 3: tilt=move tap=rotate/restart\n");
 
     /* 主循环 */
     while (1)
@@ -113,6 +117,15 @@ int main(void)
             {
                 mpu_fail_logged = 1;
                 SEGGER_RTT_WriteString(0, "[DIAG] MPU6050_UpdateEuler FAIL\n");
+            }
+
+            /* 俄罗斯方块 tick：跟随 100Hz 采样节拍（体感判定 + 重力下落） */
+            if (mpu_rc == 0)
+            {
+                const MPU6050_RawData_t *raw = MPU6050_GetRaw();
+                const MPU6050_Euler_t   *eul = MPU6050_GetEuler();
+                Tetris_Tick(eul->roll, raw->ax, raw->ay, raw->az);
+                Matrix7219_ShowFrame(Tetris_GetFrame());
             }
         }
 

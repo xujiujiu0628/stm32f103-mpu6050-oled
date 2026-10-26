@@ -1,12 +1,14 @@
 # stm32f103-mpu6050-oled —— MPU6050 姿态可视化装置
 
 STM32F103C8T6（Blue Pill）通过 **软件 I2C 读取 MPU6050 6 轴数据**，互补滤波融合成欧拉角，
-在 0.96 寸 SSD1306 OLED 上实时显示，**PA0 按键**切换 4 个显示状态。
+在 0.96 寸 SSD1306 OLED 上实时显示，**PA0 按键**切换显示状态；
+外挂 **MAX7219 8x8 点阵**跑体感俄罗斯方块（倾斜移动 / 敲击旋转），OLED 作副屏。
 
 - 库/工具链：HAL + arm-none-eabi-gcc + MSYS2 make（沿用 adc-oled 骨架）
 - MPU6050：PB10/PB11 软件 I2C（400kHz，独立总线）
 - OLED：PB8/PB9 软件 I2C（100kHz，沿用 adc-oled MyI2C/My_OLED）
-- 通信：双总线独立，互不干扰
+- MAX7219：SPI1 硬件外设（PA5/PA7，PA4 软件片选）
+- 通信：双 I2C 总线独立 + SPI 独立，互不干扰
 - 姿态解算：互补滤波（α=0.98，不用 DMP）— 详见 [ADR-003](docs/ADR/003-no-dmp.md)
 
 ## 硬件接线
@@ -24,6 +26,11 @@ STM32F103C8T6（Blue Pill）通过 **软件 I2C 读取 MPU6050 6 轴数据**，�
 | OLED SDA | **PB9** | 软件 I2C 数据 |
 | 按键一脚 | **PA0** | 按下高电平触发（内部下拉） |
 | 按键另一脚 | 3V3 | — |
+| MAX7219 VCC | 5V（模块常带 5V 输入；3V3 多数模块也能点但亮度低） | — |
+| MAX7219 GND | GND | — |
+| MAX7219 DIN | **PA7** | SPI1_MOSI |
+| MAX7219 CLK | **PA5** | SPI1_SCK（9MHz，CPOL=0/CPHA=1） |
+| MAX7219 CS | **PA4** | 软件片选，低有效 |
 | ST-Link | SWDIO/SWCLK/3V3/GND | 烧录调试 |
 
 > 引脚无冲突；若换引脚：MPU6050 改 `User/mpu6050/mpu6050_i2c.c` 顶部宏，OLED 改 `User/MyI2C.c` 顶部宏。
@@ -37,9 +44,14 @@ make flash               # OpenOCD + ST-Link 烧录（需已连接板子）
 
 # 真机验证（verify.py 全链路）
 python D:\claude\embedded-toolkit\scripts\verify.py run
+
+# host 单测（Git Bash，需 MSYS2 mingw64 gcc 在 PATH）
+export PATH="/c/msys64/mingw64/bin:$PATH"
+gcc -std=c99 -Wall -Wextra -IUser -o build/test_brt_band.exe tests/test_brt_band.c User/brt_band.c && ./build/test_brt_band.exe
+gcc -std=c99 -Wall -Wextra -IUser -IUser/tetris -o build/test_tetris.exe tests/test_tetris.c User/tetris/tetris.c -lm && ./build/test_tetris.exe
 ```
 
-预期构建大小：text ~16KB，bss ~3.3KB（远小于 64KB flash 上限）。
+预期构建大小：text ~35KB，bss ~3.6KB（远小于 64KB flash 上限）。
 
 ## 显示状态
 
@@ -48,7 +60,8 @@ python D:\claude\embedded-toolkit\scripts\verify.py run
 | 0（启动默认）| 短按回到 | 六轴原始数据（ax/ay/az + gx/gy/gz）|
 | 1 | 短按 1 次 | 欧拉角（Roll/Pitch 数值，Yaw: live 占位）|
 | 2 | 短按 2 次 | 2D 姿态点图（中心十字 + 参考圆 + 实时点）|
-| 3（关屏）| 长按任意非关屏状态 | SSD1306 display off（采样/滤波后台继续）|
+| 3 | 短按 3 次 | 俄罗斯方块副屏（NEXT 预览 + Score/Lines，棋盘在 MAX7219 点阵上）|
+| 关屏 | 长按任意非关屏状态 | SSD1306 display off（采样/滤波/游戏后台继续）|
 
 ### 状态 0：六轴原始数据
 
@@ -94,6 +107,22 @@ python D:\claude\embedded-toolkit\scripts\verify.py run
 板子前倾 30°：点向上移 ~8 像素
 倾斜超 ±90°：点消失（超量程）
 
+## 俄罗斯方块（MAX7219 点阵）
+
+8x8 棋盘显示在 MAX7219 点阵上，OLED 状态 3 作副屏（下一块预览 + 分数/行数）。
+
+| 操作 | 体感 | 阈值（`User/tetris/tetris.h`） |
+|---|---|---|
+| 左移 / 右移 | 板子左倾 / 右倾 | roll ±25° 边沿触发，回中 ±17° 再武装（防一格倾斜连移到底） |
+| 旋转 | 敲击板子 | \|a\| ≥ 1.8g 触发，回落 < 1.2g 再武装 + 200ms 冷却（防连转） |
+| 重开 | GAME OVER 后敲击 | 同上 |
+
+- 重力：800ms/格起步，每消 5 行快 100ms，下限 200ms
+- 计分：1/2/3/4 行 = 1/3/5/8 分（>4 行按 4 行计，8x8 棋盘一次可消超过 4 行）
+- 帧格式：`Tetris_GetFrame()` 8 字节，每字节一行，bit7 = 最左列；MAX7219 DIG0..DIG7 直写
+- 点阵显示方向若不对（镜像/倒置），改 `Matrix7219_ShowFrame` 里的字节/位映射即可，逻辑层不用动
+- host 单测：`tests/test_tetris.c`（19 例，覆盖碰撞/消行/计分/体感判定/重开）
+
 ## 使用注意
 
 - **上电后保持板子静止约 1 秒**：启动阶段陀螺仪做零点偏置校准，期间按键不响应属正常；校准完成显示启动画面后即可操作。
@@ -106,6 +135,10 @@ python D:\claude\embedded-toolkit\scripts\verify.py run
 - **OLED 显示 MPU6050 FAIL**：双地址探测都失败，检查 GY-521 模块供电和 AD0 引脚
 - **按键无反应**：万用表量 PA0 电压，未按下 ≈ 0V，按下 ≈ 3.3V；如相反需改 ADR-002 决策
 - **Yaw 漂移是预期行为**：无磁力计无法绝对参考，UI 显示 "Yaw: live" 文字占位 — 详见 [ADR-003](docs/ADR/003-no-dmp.md)
+- **MAX7219 全黑**：先查 5V/3V3 供电和 DIN/CLK/CS 三线 → 再确认模块方向（DIN 是输入、DOUT 是级联输出，别接反）→ SPI 速率仍过不了时可把 `matrix7219.c` 预分频改 `SPI_BAUDRATEPRESCALER_16`
+- **点阵镜像/倒置**：模块翻转就能解决（物理层面），或在 `Matrix7219_ShowFrame` 里逐字节位反转 / DIG 行序反转
+- **敲击不响应**：RTT 里看 `[STATE=...] ax/ay/az` 敲击瞬间的幅值，若峰值不到 1.8g，下调 `TETRIS_TAP_PEAK_G`；静置误触发则上调
+- **倾斜方向反了**：`tetris.c` 的 `Tetris_Tick` 里左右两个分支对调
 
 ## 文档
 
