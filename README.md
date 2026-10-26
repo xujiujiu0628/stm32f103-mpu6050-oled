@@ -26,7 +26,7 @@ STM32F103C8T6（Blue Pill）通过 **软件 I2C 读取 MPU6050 6 轴数据**，�
 | OLED SDA | **PB9** | 软件 I2C 数据 |
 | 按键一脚 | **PA0** | 按下高电平触发（内部下拉） |
 | 按键另一脚 | 3V3 | — |
-| MAX7219 VCC | 5V（模块常带 5V 输入；3V3 多数模块也能点但亮度低） | — |
+| MAX7219 VCC | **5V**（datasheet 下限 4.0V；**接 3V3 不工作**——2026-10-26 真机踩坑，点阵全黑） | — |
 | MAX7219 GND | GND | — |
 | MAX7219 DIN | **PA7** | SPI1_MOSI |
 | MAX7219 CLK | **PA5** | SPI1_SCK（9MHz，CPOL=0/CPHA=1） |
@@ -135,7 +135,7 @@ gcc -std=c99 -Wall -Wextra -IUser -IUser/tetris -o build/test_tetris.exe tests/t
 - **OLED 显示 MPU6050 FAIL**：双地址探测都失败，检查 GY-521 模块供电和 AD0 引脚
 - **按键无反应**：万用表量 PA0 电压，未按下 ≈ 0V，按下 ≈ 3.3V；如相反需改 ADR-002 决策
 - **Yaw 漂移是预期行为**：无磁力计无法绝对参考，UI 显示 "Yaw: live" 文字占位 — 详见 [ADR-003](docs/ADR/003-no-dmp.md)
-- **MAX7219 全黑**：先查 5V/3V3 供电和 DIN/CLK/CS 三线 → 再确认模块方向（DIN 是输入、DOUT 是级联输出，别接反）→ SPI 速率仍过不了时可把 `matrix7219.c` 预分频改 `SPI_BAUDRATEPRESCALER_16`
+- **MAX7219 全黑**：①**先查供电——VCC 必须 5V，3V3 低于规格下限 4.0V 完全不工作** → ②复位时看开机自检：点阵全亮 0.5s 说明模块活着 → ③再查 DIN/CLK/CS 与模块方向（DIN 是输入、DOUT 是级联输出，别接反）；SPI 速率问题可把 `matrix7219.c` 预分频改 `SPI_BAUDRATEPRESCALER_32`
 - **点阵镜像/倒置**：模块翻转就能解决（物理层面），或在 `Matrix7219_ShowFrame` 里逐字节位反转 / DIG 行序反转
 - **敲击不响应**：RTT 里看 `[STATE=...] ax/ay/az` 敲击瞬间的幅值，若峰值不到 1.8g，下调 `TETRIS_TAP_PEAK_G`；静置误触发则上调
 - **倾斜方向反了**：`tetris.c` 的 `Tetris_Tick` 里左右两个分支对调

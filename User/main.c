@@ -57,7 +57,18 @@ int main(void)
     Key_Init();
     AdcBrt_Init();
     OledView_Init();
-    Matrix7219_Init();
+    {
+        /* 点阵自检：init 返回 SPI 发送状态；display test 全亮 0.5s 验证模块供电/接线 */
+        uint8_t mx_rc = Matrix7219_Init();
+        char buf[64];
+        snprintf(buf, sizeof(buf), "[BOOT] MAX7219 init rc=%u\n", (unsigned)mx_rc);
+        SEGGER_RTT_WriteString(0, buf);
+        Matrix7219_DisplayTest(1);
+        SEGGER_RTT_WriteString(0, "[BOOT] MAX7219 display test ON (0.5s)\n");
+        HAL_Delay(500);
+        Matrix7219_DisplayTest(0);
+        SEGGER_RTT_WriteString(0, "[BOOT] MAX7219 display test OFF\n");
+    }
     SEGGER_RTT_WriteString(0, "[BOOT] PB15 long = recalibrate gyro\n");
     SEGGER_RTT_WriteString(0, "[BOOT] TETRIS page 3: tilt=move tap=rotate/restart\n");
 

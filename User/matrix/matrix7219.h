@@ -11,13 +11,20 @@
 
 /**
  * @brief  初始化：GPIO/SPI1 外设 + MAX7219 寄存器配置（decode off/scan 7/intensity/shutdown off）
+ * @retval 0=所有寄存器写成功；非 0=首个失败的 HAL 状态码（SPI 超时/忙）
  */
-void Matrix7219_Init(void);
+uint8_t Matrix7219_Init(void);
 
 /**
  * @brief  写一个 MAX7219 寄存器（CS 拉低 → 16bit 移位 → CS 上升锁存）
+ * @retval HAL_SPI_Transmit 返回值（HAL_OK=0）
  */
-void Matrix7219_WriteRegister(uint8_t reg, uint8_t val);
+uint8_t Matrix7219_WriteRegister(uint8_t reg, uint8_t val);
+
+/**
+ * @brief  显示测试：on=1 全点亮 / on=0 恢复正常显示（硬件自检用）
+ */
+void Matrix7219_DisplayTest(uint8_t on);
 
 /**
  * @brief  刷整帧 8 字节（8 次寄存器写，DIG0..DIG7 = frame[0..7]）
