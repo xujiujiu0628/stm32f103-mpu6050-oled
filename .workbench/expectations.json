@@ -85,6 +85,14 @@
       "texts": [
         "[STATE=3 last="
       ]
+    },
+    {
+      "id": "FR-SAFE-01",
+      "desc": "boot 在场且禁 HardFault/错误处理器指纹（正负成对，正锚借 boot）",
+      "texts": [
+        "[BOOT] stm32f103-mpu6050-oled v0.1"
+      ],
+      "forbidden_texts": ["HARDFAULT", "HardFault", "Error handler"]
     }
   ],
   "waived": [

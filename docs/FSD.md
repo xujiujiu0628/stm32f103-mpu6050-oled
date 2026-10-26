@@ -163,3 +163,11 @@ PA0 / PB8-9 / PB10-11 不变。
 - **描述**：校准期间全屏 `CALIBRATING... / Keep still`；结束自动恢复当前页
 - **接受准则**：人工目测覆盖层出现与撤销各 ≤1 显示拍
 - **Tier**：bench 人工观察 → waived
+
+### FR-SAFE-01：运行期禁崩溃与错误处理器指纹
+- **描述**：采集窗内固件必须保持运行，不得进入 HardFault/错误处理器路径
+- **接受准则**：RTT 捕获到启动横幅，且全文不含 `HARDFAULT` / `HardFault` /
+  `Error handler` 指纹（正负成对，正锚借 FR-BOOT-01）
+- **Tier**：bench（verify 断言 FR-SAFE-01）
+- **来源**：2026-10-24 fail-closed 整改补录；原 `FR-MPU-02` 仅能约束数据行，
+  无法在“数据行仍在但随后崩溃”或“崩溃发生在另一状态”时判红
