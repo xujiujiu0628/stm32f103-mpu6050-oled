@@ -115,7 +115,7 @@ gcc -std=c99 -Wall -Wextra -IUser -IUser/tetris -o build/test_tetris.exe tests/t
 
 | 操作 | 体感 | 阈值（`User/tetris/tetris.h`） |
 |---|---|---|
-| 左移 / 右移 | 板子左倾 / 右倾 | roll ±25° 边沿触发，回中 ±17° 再武装（防一格倾斜连移到底） |
+| 左移 / 右移 | 板子前后倾（pitch 轴） | ±25° 边沿触发，回中 ±17° 再武装（防一格倾斜连移到底）；方向反了改 `TETRIS_TILT_INVERT=1` |
 | 旋转 | 敲击板子 | \|a\| ≥ 1.8g 触发，回落 < 1.2g 再武装 + 200ms 冷却（防连转） |
 | 重开 | GAME OVER 后敲击 | 同上 |
 

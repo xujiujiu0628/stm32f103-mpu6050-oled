@@ -221,9 +221,10 @@ void Tetris_DebugSetBoard(const uint8_t rows[8])
     for (i = 0; i < 8; i++) s_board[i] = rows[i];
 }
 
-void Tetris_Tick(float roll, float ax, float ay, float az)
+void Tetris_Tick(float tilt_deg, float ax, float ay, float az)
 {
     float norm;
+    float tilt = TETRIS_TILT_INVERT ? -tilt_deg : tilt_deg;
 
     if (s_tap_cooldown_ms) s_tap_cooldown_ms -= 10;
     if (s_drop_acc_ms < 0xFFFFFFFFu) s_drop_acc_ms += 10;
@@ -247,18 +248,18 @@ void Tetris_Tick(float roll, float ax, float ay, float az)
     }
 
     /* --- 倾斜侧移：边沿触发，回中（阈值-死区以内）再武装 --- */
-    if (s_tilt_armed && roll >= TETRIS_TILT_THRESHOLD)
+    if (s_tilt_armed && tilt >= TETRIS_TILT_THRESHOLD)
     {
         Tetris_ShiftRight();
         s_tilt_armed = 0;
     }
-    else if (s_tilt_armed && roll <= -TETRIS_TILT_THRESHOLD)
+    else if (s_tilt_armed && tilt <= -TETRIS_TILT_THRESHOLD)
     {
         Tetris_ShiftLeft();
         s_tilt_armed = 0;
     }
-    else if (!s_tilt_armed && roll < TETRIS_TILT_THRESHOLD - TETRIS_TILT_DEADBAND
-                            && roll > -(TETRIS_TILT_THRESHOLD - TETRIS_TILT_DEADBAND))
+    else if (!s_tilt_armed && tilt < TETRIS_TILT_THRESHOLD - TETRIS_TILT_DEADBAND
+                            && tilt > -(TETRIS_TILT_THRESHOLD - TETRIS_TILT_DEADBAND))
     {
         s_tilt_armed = 1;
     }

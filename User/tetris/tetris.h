@@ -5,9 +5,12 @@
 
 /* 棋盘 8x8；帧 = 8 字节，每字节一行，bit7 = 最左列（与 MAX7219 DIG0..DIG7 行序一致） */
 
-/* 倾斜控制阈值（度）：超出触发一次侧移，回中 ±TETRIS_TILT_DEADBAND 内再武装 */
+/* 倾斜控制阈值（度）：超出触发一次侧移，回中 ±TETRIS_TILT_DEADBAND 内再武装
+ * @控制轴  用 pitch（前后倾）——手持板子自然倾斜产生的就是 pitch；roll 是绕长轴滚转
+ * @方向    TETRIS_TILT_INVERT=1 时左右映射对调（现场手感方向反了就改这个） */
 #define TETRIS_TILT_THRESHOLD    25.0f
 #define TETRIS_TILT_DEADBAND     8.0f
+#define TETRIS_TILT_INVERT       0
 
 /* 敲击检测：|a| 超过尖峰阈值触发旋转，200ms 冷却；回落 < 回落阈值再武装 */
 #define TETRIS_TAP_PEAK_G        1.8f
@@ -25,10 +28,10 @@ void Tetris_Reset(void);
 
 /**
  * @brief  游戏主 tick（10ms 节拍，主循环调用）
- * @param  roll  当前横滚角（度）
+ * @param  tilt_deg  当前倾斜角（pitch，度）
  * @param  ax/ay/az  加速度（g）
  */
-void Tetris_Tick(float roll, float ax, float ay, float az);
+void Tetris_Tick(float tilt_deg, float ax, float ay, float az);
 
 /**
  * @brief  手动侧移（左/右），成功 1 / 撞墙或撞块 0

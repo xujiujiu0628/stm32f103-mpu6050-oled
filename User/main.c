@@ -135,7 +135,7 @@ int main(void)
             {
                 const MPU6050_RawData_t *raw = MPU6050_GetRaw();
                 const MPU6050_Euler_t   *eul = MPU6050_GetEuler();
-                Tetris_Tick(eul->roll, raw->ax, raw->ay, raw->az);
+                Tetris_Tick(eul->pitch, raw->ax, raw->ay, raw->az);
                 Matrix7219_ShowFrame(Tetris_GetFrame());
             }
         }
