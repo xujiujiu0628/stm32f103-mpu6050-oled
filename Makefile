@@ -179,6 +179,16 @@ flash: $(BUILD_DIR)/$(TARGET).bin
 	openocd -f openocd.cfg -c "program $(BUILD_DIR)/$(TARGET).bin 0x08000000 verify reset exit"
 
 #######################################
+# host tests（MSYS2 mingw64 gcc，纯逻辑层单测）
+#######################################
+HOST_CC = C:/msys64/mingw64/bin/gcc.exe
+test: | $(BUILD_DIR)
+	$(HOST_CC) -std=c99 -Wall -Wextra -IUser -o $(BUILD_DIR)/test_brt_band.exe tests/test_brt_band.c User/brt_band.c
+	$(BUILD_DIR)/test_brt_band.exe
+	$(HOST_CC) -std=c99 -Wall -Wextra -IUser -IUser/tetris -o $(BUILD_DIR)/test_tetris.exe tests/test_tetris.c User/tetris/tetris.c -lm
+	$(BUILD_DIR)/test_tetris.exe
+
+#######################################
 # clean up
 #######################################
 clean:

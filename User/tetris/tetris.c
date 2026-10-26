@@ -275,10 +275,10 @@ void Tetris_Tick(float roll, float ax, float ay, float az)
         s_tap_pressed = 0;
     }
 
-    /* --- 重力下落：周期随消行数缩短（每 5 行快 100ms，下限 200ms） --- */
+    /* --- 重力下落：周期随消行数缩短（每 5 行快 100ms，下限 TETRIS_DROP_MIN_MS） --- */
     {
         uint32_t period = TETRIS_DROP_BASE_MS - (s_lines / 5) * 100U;
-        if (period < 200) period = 200;
+        if (period < TETRIS_DROP_MIN_MS) period = TETRIS_DROP_MIN_MS;
         if (s_drop_acc_ms >= period)
         {
             s_drop_acc_ms = 0;

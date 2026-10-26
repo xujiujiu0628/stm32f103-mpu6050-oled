@@ -14,8 +14,9 @@
 #define TETRIS_TAP_RELEASE_G     1.2f
 #define TETRIS_TAP_COOLDOWN_MS   200U
 
-/* 重力下落周期（ms/格），每次消行加速 */
-#define TETRIS_DROP_BASE_MS      800U
+/* 重力下落周期（ms/格）：500ms 起步，每消 5 行快 100ms，下限 150ms */
+#define TETRIS_DROP_BASE_MS      500U
+#define TETRIS_DROP_MIN_MS       150U
 
 /**
  * @brief  重置游戏：清棋盘、清分、出第一块

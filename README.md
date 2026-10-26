@@ -119,7 +119,7 @@ gcc -std=c99 -Wall -Wextra -IUser -IUser/tetris -o build/test_tetris.exe tests/t
 | 旋转 | 敲击板子 | \|a\| ≥ 1.8g 触发，回落 < 1.2g 再武装 + 200ms 冷却（防连转） |
 | 重开 | GAME OVER 后敲击 | 同上 |
 
-- 重力：800ms/格起步，每消 5 行快 100ms，下限 200ms
+- 重力：500ms/格起步，每消 5 行快 100ms，下限 150ms
 - 计分：1/2/3/4 行 = 1/3/5/8 分（>4 行按 4 行计，8x8 棋盘一次可消超过 4 行）
 - 帧格式：`Tetris_GetFrame()` 8 字节，每字节一行，bit7 = 最左列；MAX7219 DIG0..DIG7 直写
 - 点阵显示方向若不对（镜像/倒置），改 `Matrix7219_ShowFrame` 里的字节/位映射即可，逻辑层不用动
