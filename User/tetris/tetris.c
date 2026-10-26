@@ -52,6 +52,9 @@ static uint32_t s_tap_cooldown_ms;     /* 敲击冷却倒计时 */
 /* 重力 */
 static uint32_t s_drop_acc_ms;
 
+/* 结束提示（点阵全亮）剩余时间 */
+static uint32_t s_over_hold_ms;
+
 /* ---- 内部工具 ---- */
 
 static uint8_t next_random(void)
@@ -128,11 +131,14 @@ static void lock_piece(void)
         }
     }
 
-    /* 出下一块；出生位被占 → GAME OVER */
+    /* 出下一块；出生位被占 → GAME OVER（堆到顶：全亮提示后自动重开） */
     s_cur = s_next;
     spawn_piece(&s_next);
     if (collide(&s_cur, s_cur.x, s_cur.y))
+    {
         s_game_over = 1;
+        s_over_hold_ms = TETRIS_OVER_HOLD_MS;
+    }
 }
 
 /* ---- 对外 API ---- */
@@ -144,6 +150,7 @@ void Tetris_Reset(void)
     s_score = 0;
     s_lines = 0;
     s_game_over = 0;
+    s_over_hold_ms = 0;
     /* RNG 跨局持续演进：只在首次使用时给固定种子，重开不再回溯同一序列
      * （原来每次 Reset 写死 0xACE1 → 每局出块完全一样，2026-10-26 真机反馈）
      * 上电变异由 Tetris_Seed() 用传感器噪声注入 */
@@ -193,16 +200,23 @@ const uint8_t *Tetris_GetFrame(void)
 {
     static uint8_t frame[8];
     int bx, by, i;
+
+    /* 游戏结束提示：整屏全亮（单色点阵，即"全红"），保持 TETRIS_OVER_HOLD_MS */
+    if (s_game_over)
+    {
+        for (i = 0; i < 8; i++) frame[i] = 0xFF;
+        return frame;
+    }
+
     for (i = 0; i < 8; i++) frame[i] = s_board[i];
-    if (!s_game_over)
-        for (by = 0; by < 4; by++)
-            for (bx = 0; bx < 4; bx++)
-                if (piece_cell(&s_cur, bx, by))
-                {
-                    int cy = s_cur.y + by, cx = s_cur.x + bx;
-                    if (cy >= 0 && cy <= 7 && cx >= 0 && cx <= 7)
-                        frame[cy] |= (uint8_t)(0x80u >> cx);
-                }
+    for (by = 0; by < 4; by++)
+        for (bx = 0; bx < 4; bx++)
+            if (piece_cell(&s_cur, bx, by))
+            {
+                int cy = s_cur.y + by, cx = s_cur.x + bx;
+                if (cy >= 0 && cy <= 7 && cx >= 0 && cx <= 7)
+                    frame[cy] |= (uint8_t)(0x80u >> cx);
+            }
     return frame;
 }
 
@@ -243,16 +257,14 @@ void Tetris_Tick(float tilt_deg, float roll_deg, float ax, float ay, float az)
 
     if (s_game_over)
     {
-        /* 敲击重开：冷却已过 + 尖峰出现 + 回落后才武装，尖峰即重开 */
-        if (!s_tap_pressed && norm >= TETRIS_TAP_PEAK_G && !s_tap_cooldown_ms)
+        /* 堆到顶：点阵全亮保持 TETRIS_OVER_HOLD_MS，倒计时结束后自动重开 */
+        if (s_over_hold_ms >= 10U)
         {
-            s_tap_pressed = 1;
-            Tetris_Reset();
+            s_over_hold_ms -= 10U;
         }
-        if (s_tap_pressed && norm < TETRIS_TAP_RELEASE_G)
+        else
         {
-            s_tap_pressed = 0;
-            s_tap_cooldown_ms = TETRIS_TAP_COOLDOWN_MS;
+            Tetris_Reset();
         }
         return;
     }

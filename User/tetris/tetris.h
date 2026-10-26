@@ -24,6 +24,9 @@
 #define TETRIS_SOFTDROP_ROLL_DEG 20.0f
 #define TETRIS_DROP_SOFT_MS      60U
 
+/* 游戏结束：点阵全亮提示，保持 TETRIS_OVER_HOLD_MS 后自动重开 */
+#define TETRIS_OVER_HOLD_MS      1500U
+
 /**
  * @brief  重置游戏：清棋盘、清分、出第一块
  */

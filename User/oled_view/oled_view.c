@@ -165,7 +165,7 @@ static void render_tetris(void)
     My_OLED_ShowString(0, 40, buf, 6);
 
     if (Tetris_IsGameOver())
-        My_OLED_ShowString(0, 56, (char *)"TAP = RESTART", 6);
+        My_OLED_ShowString(0, 56, (char *)"NEW GAME...", 6);
     else
         My_OLED_ShowString(0, 56, (char *)"TILT MOVE TAP ROT", 6);
 

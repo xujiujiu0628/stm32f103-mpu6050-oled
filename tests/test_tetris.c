@@ -151,17 +151,22 @@ int main(void)
         CHECK(1, "持续高 g 不崩溃");
     }
 
-    /* --- 游戏结束 + 敲击重开 --- */
+    /* --- 游戏结束：点阵全亮提示 → 自动重开 --- */
     {
         /* 垫满到底部两行，快进若干块直到 spawn 撞死 */
         uint8_t rows[8] = {0x00,0x00,0x00,0x00,0x00,0x00,0xFF,0xFF};
+        Tetris_Reset();
         set_board(rows);
         tick_n(0.0f, 0, 0, 1.0f, 40000);   /* 400s：足够把 8 高棋盘堆死 */
         CHECK(Tetris_IsGameOver(), "堆满判负");
-        tick_n(0.0f, 0, 0, 1.0f, 40);      /* 冷却过去 */
-        tick_n(0.0f, 0, 0, 2.5f, 3);        /* 敲击重开 */
-        tick_n(0.0f, 0, 0, 1.0f, 3);
-        CHECK(!Tetris_IsGameOver(), "敲击重开");
+        {
+            const uint8_t *f = Tetris_GetFrame();
+            int i, all = 1;
+            for (i = 0; i < 8; i++) all &= (f[i] == 0xFF);
+            CHECK(all, "结束提示：整屏全亮");
+        }
+        tick_n(0.0f, 0, 0, 1.0f, 160);      /* 1.6s > 1500ms 保持窗 */
+        CHECK(!Tetris_IsGameOver(), "超时自动重开");
         EQ(Tetris_GetLines(), 0, "重开清零行数");
     }
 
