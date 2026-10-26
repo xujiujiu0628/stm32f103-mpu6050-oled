@@ -126,6 +126,10 @@ int main(void)
             }
             SEGGER_RTT_WriteString(0, buf);
             OledView_ShowCalibHint(0);
+
+            /* PB15 长按同时重开一局俄罗斯方块（手动重开入口） */
+            Tetris_Reset();
+            SEGGER_RTT_WriteString(0, "[KEY] PB15 long: tetris restarted\n");
         }
 
         /* 亮度电位器 (PA6/ADC1_IN6): 内部 50ms 节流评估 + 滞回三档 */
