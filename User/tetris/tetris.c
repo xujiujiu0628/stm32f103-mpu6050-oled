@@ -196,6 +196,14 @@ void Tetris_Rotate(void)
     }
 }
 
+void Tetris_HardDrop(void)
+{
+    if (s_game_over) return;
+    while (!collide(&s_cur, s_cur.x, s_cur.y + 1))
+        s_cur.y++;
+    lock_piece();
+}
+
 const uint8_t *Tetris_GetFrame(void)
 {
     static uint8_t frame[8];

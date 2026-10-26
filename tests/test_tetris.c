@@ -200,6 +200,19 @@ int main(void)
         CHECK(Tetris_GetFrame()[7] == 0, "正常速度 1.5s 还到不了底行");
     }
 
+    /* --- 硬降：立即落底锁定 + 出新块 --- */
+    {
+        const uint8_t *f;
+        Tetris_Reset();
+        set_board((const uint8_t[8]){0,0,0,0,0,0,0,0});
+        f = Tetris_GetFrame();
+        CHECK(f[7] == 0, "硬降前底行为空");
+        Tetris_HardDrop();
+        f = Tetris_GetFrame();
+        CHECK(f[7] != 0, "硬降后底行有锁定块");
+        CHECK(!Tetris_IsGameOver(), "空盘硬降不判负");
+    }
+
     /* --- 帧位序：bit7=最左列（锚钉防倒装漂移） --- */
     {
         /* 构造已知棋盘：行 7 = 0x80 → 最底行最左一个点 */

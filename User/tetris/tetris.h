@@ -57,6 +57,11 @@ uint8_t Tetris_ShiftRight(void);
 void Tetris_Rotate(void);
 
 /**
+ * @brief  硬降：当前块直接落到底并立即锁定（PB15 双击）
+ */
+void Tetris_HardDrop(void);
+
+/**
  * @brief  渲染帧：棋盘 + 活动块合并后 8 字节（bit7=最左列）
  */
 const uint8_t *Tetris_GetFrame(void);

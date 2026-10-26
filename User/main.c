@@ -118,6 +118,11 @@ int main(void)
             Tetris_Rotate();
             SEGGER_RTT_WriteString(0, "[KEY] PB15 short: rotate\n");
         }
+        if (Key_Check(KEY1, KEY_DOUBLE))
+        {
+            Tetris_HardDrop();
+            SEGGER_RTT_WriteString(0, "[KEY] PB15 double: hard drop\n");
+        }
         if (Key_Check(KEY1, KEY_LONG))
         {
             char buf[64];
