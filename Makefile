@@ -192,10 +192,12 @@ test: | $(BUILD_DIR)
 	$(BUILD_DIR)/test_tetris.exe
 
 #######################################
-# RTT 采集（20s，脚本在 build/rtt_grab.ps1；不含 build/ 时先手工创建）
+# RTT 采集（20s）。脚本在 tools/rtt/ —— 2026-10-26 从 build/ 迁出：build/ 被
+# gitignore，make clean 会把脚本一起删掉。输出全量 RTT 行（含 [PERF] 心跳），
+# 需要过滤自己 grep / Select-String。
 #######################################
 rtt:
-	powershell -NoProfile -Command "& '$(CURDIR)/build/rtt_grab.ps1' | Select-String 'cur=(\d+) next=(\d+)' | ForEach-Object { $$_.Matches[0].Value } | Select-Object -Unique"
+	powershell -NoProfile -ExecutionPolicy Bypass -File "$(CURDIR)/tools/rtt/rtt_grab.ps1"
 
 #######################################
 # clean up

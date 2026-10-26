@@ -45,7 +45,7 @@ make clean && make       # 构建，预期零警告；产物 build/mpu6050-oled.
 make flash               # OpenOCD + ST-Link 烧录（需已连接板子）
 
 # 真机验证（verify.py 全链路）
-python D:\claude\embedded-toolkit\scripts\verify.py run
+python D:\claude\embedded-toolkit\scripts\verify.py --project .
 
 # host 单测（Git Bash，需 MSYS2 mingw64 gcc 在 PATH）
 export PATH="/c/msys64/mingw64/bin:$PATH"
@@ -75,8 +75,8 @@ gcc -std=c99 -Wall -Wextra -IUser -IUser/tetris -o build/test_tetris.exe tests/t
   `mpu n/avg/max/late` 实际采样次数与间隔（`late` = 间隔 >15ms 的次数）、
   `loop` 主循环迭代率与其中"轻迭代"数。`main.c` 的 `PERF_TRACE 0` 可整体关掉。
   全部整数定点打印（nano printf 不开 `%f`）。
-- 采集：`make rtt`。脚本 `build/rtt_grab.ps1` + `build/rtt.cfg` 在 gitignore 的 `build/` 下，
-  **`make clean` 会把它们一起删掉**（2026-10-26 踩过一次）。
+- 采集：`make rtt`（全量输出，含 `[PERF]`）。脚本在 `tools/rtt/` —— 2026-10-26 从 `build/` 迁出，
+  因为 `build/` 被 gitignore，`make clean` 会把脚本一起删掉（踩过一次）。
 
 ## 显示状态
 
@@ -179,6 +179,7 @@ gcc -std=c99 -Wall -Wextra -IUser -IUser/tetris -o build/test_tetris.exe tests/t
 - [ADR-001](docs/ADR/001-mpu6050-i2c-bus.md) - MPU6050 独立 I2C 总线
 - [ADR-002](docs/ADR/002-key-active-high.md) - PA0 高电平触发
 - [ADR-003](docs/ADR/003-no-dmp.md) - 不用 DMP，纯原始数据+互补滤波
+- [ADR-004](docs/ADR/004-oled-slice-flush.md) - OLED 整帧刷改分片刷（为什么不引入 RTOS）
 
 ## 复用资源
 

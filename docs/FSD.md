@@ -90,6 +90,11 @@ STM32F103C8T6（Blue Pill）通过软件 I2C 读取 MPU6050 6 轴数据，融合
 - OLED 刷新：10Hz
 - 按键响应延迟：< 20ms
 - 采样→显示端到端延迟：< 100ms
+- **实测（2026-10-26，RTT `[PERF]` 心跳）**：MPU 采样 96~97Hz（间隔均值 10.3ms、
+  峰值 14ms、>15ms 漏拍 0 次）；OLED 帧率 5~6fps，**未达 10Hz**（切片刷的定位事务 +
+  片间被采样插队，详见 [ADR-004](ADR/004-oled-slice-flush.md)；提速路径是该 ADR 的替代方案 D）
+- **断言（expectations `NFR-01`）**：steady-state 1s 窗口 `mpu n ≥ 90` 且单次刷屏
+  `max_us < 10000`；把 `OLEDS_SLICE_ENABLE` 拨回 0（整帧 132ms）会立即判红
 
 ### NFR-02：内存
 - flash < 50KB（实测 16KB）

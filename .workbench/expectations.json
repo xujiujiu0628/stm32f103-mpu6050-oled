@@ -93,6 +93,16 @@
         "[BOOT] stm32f103-mpu6050-oled v0.1"
       ],
       "forbidden_texts": ["HARDFAULT", "HardFault", "Error handler"]
+    },
+    {
+      "id": "NFR-01",
+      "desc": "性能：steady-state 1s 窗口采样 >=90Hz 且单次刷屏阻塞 <10ms（分片刷；回退整帧刷即判红）",
+      "patterns": [
+        "mpu n=(\\d+) avg=\\d+\\.\\dms max_ms=\\d+ late=0",
+        "max_us=\\d{1,4}\\b"
+      ],
+      "capture_group": 1,
+      "min": 90
     }
   ],
   "waived": [
