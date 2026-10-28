@@ -55,6 +55,29 @@ gcc -std=c99 -Wall -Wextra -IUser -IUser/tetris -o build/test_tetris.exe tests/t
 
 预期构建大小：text ~37KB，bss ~3.6KB（远小于 64KB flash 上限）。
 
+### 真机验证要人工按键（4 条 FR，2026-10-28 实测）
+
+`verify.py` 的 13 项里 **9 项自动可过**，下面 4 项要人在采集窗口内按键，否则必然 FAIL：
+
+| FR | 期望文本 | 触发动作 |
+|---|---|---|
+| FR-CAL-01 | `[CAL] done` | **PB15 长按** ~1s（陀螺仪重校准 + 重开一局） |
+| FR-KEY-01 | `[KEY] SHORT` | **PA0 短按**（每按一次打印一次） |
+| FR-OLED-02 | `[STATE=3 last=` | **PA0 短按 ×3**，停在俄罗斯方块页（state 3） |
+| FR-KEY-02 | `[KEY] LONG` | **PA0 长按** ~1s（= 关屏，**必须最后做**） |
+
+推荐顺序（`--timeout 60` 起步，烧写后板子重启即开始计时）：
+
+1. PB15 长按 ~1s
+2. PA0 短按 ×3，间隔约 1s
+3. PA0 长按 ~1s，**最后**
+
+排序原因：PA0 长按会把屏关掉，先按就进不到 state 3，FR-OLED-02 永远拿不到。
+
+**失败时怎么认**：4 条一起 FAIL、capture 里 `[DIAG] PA0=1` 出现 0 次 → 是没人按，不是固件坏了。
+`verify.py` 此时给的 `agent_hint`（"检查 registry 注册顺序和 printf 格式"）是误导，别顺着它改代码。
+
+
 ## 刷屏与主循环节拍（2026-10-26 真机实测）
 
 软 I2C 刷一整帧 SSD1306 是 1024 字节，实测**单次阻塞 132ms**——主循环一个迭代只剩一次采样机会。
