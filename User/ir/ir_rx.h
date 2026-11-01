@@ -27,4 +27,10 @@ typedef struct {
 void    IrRx_Init(void);
 uint8_t IrRx_Poll(IrEvent_t *ev);
 
+/**
+ * @brief  清空事件队列（进入长阻塞前调用，丢弃积压的陈旧帧）
+ * @note   主循环侧调用；ISR 不调用
+ */
+void    IrRx_Flush(void);
+
 #endif /* __IR_RX_H */

@@ -37,9 +37,12 @@ PB6 配 `GPIO_MODE_IT_RISING_FALLING`（PB6 的引脚 6 与 PA6 的亮度电位�
 
 ## 后果
 
-- DWT 必须在 `IrRx_Init()` 之前使能（现由 `SystemClock_72MHz()` 完成）。
+- DWT 由 `IrRx_Init()` 内幂等自使能并重取 `s_last_cyc` 基准，不依赖
+  `SystemClock_72MHz()` 的先后顺序（`MyI2C_Init()` 会清零 CYCCNT）。
 - CYCCNT 32 位 @72MHz 每 59.6s 回绕，全部用无符号差值处理。
 - EXTI 回调唯一入口 `HAL_GPIO_EXTI_Callback`（`User/ir/ir_rx.c`）目前只服务 PB6，
   回调首行按 `GPIO_Pin` 分流；将来若给别的引脚开 EXTI（按键是 20ms 轮询，不走这里），
   必须在此处补分支，否则边沿会被吞。
 - 升级到需要更短码元（如 RC5 的 889µs 半位）的协议时，需重新评估捕获路径。
+- 解码器要求帧前存在 ≥12ms 空闲（`ir_decode.c` 的 IDLE 判据）。NEC 标准帧间隔约 108ms 安全；
+  若遇到连发式遥控器（帧间隔 <12ms），会稳定丢帧——真机校准若发现"按住丢帧"，先量帧间隔。

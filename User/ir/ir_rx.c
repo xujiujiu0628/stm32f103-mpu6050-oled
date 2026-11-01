@@ -5,7 +5,9 @@
   *
   * @优先级   NVIC 1（SysTick 为 0）：毫秒计时与 HAL_Delay 不受影响
   * @回绕     CYCCNT 32 位 @72MHz 每 59.6s 回绕，全部用无符号差值
-  * @队列     4 深度；主循环每轮取一次，OLED 整帧阻塞 13ms 也不会溢出
+  * @队列     4 深度；主循环每轮取一次。可覆盖单次屏刷阻塞（整帧 132.1ms / 分片 8.4ms，
+ *           见 ADR-004）；不覆盖 MPU6050_CalibrateGyroBias() 的 ~1s 阻塞——该窗口前由
+ *           IrRx_Flush() 主动清队（见 main.c 校准入口）。
   ******************************************************************************
   */
 #include "ir_rx.h"
@@ -26,6 +28,11 @@ void IrRx_Init(void)
 {
     GPIO_InitTypeDef gpio = {0};
 
+    /* DWT 时间戳自备（幂等）：不依赖调用者是否已使能，也避免被后续
+     * MyI2C_Init() 清零 CYCCNT 后基准失配 */
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+
     __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_AFIO_CLK_ENABLE();
 
@@ -42,6 +49,11 @@ void IrRx_Init(void)
     s_head = 0;
     s_tail = 0;
     s_last_cyc = DWT->CYCCNT;
+}
+
+void IrRx_Flush(void)
+{
+    s_tail = s_head;   /* 消费者侧推进即可：ISR 只推 s_head，SPSC 安全 */
 }
 
 uint8_t IrRx_Poll(IrEvent_t *ev)

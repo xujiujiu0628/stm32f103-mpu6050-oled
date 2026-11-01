@@ -194,6 +194,8 @@ int main(void)
         Matrix7219_DisplayTest(0);
         SEGGER_RTT_WriteString(0, "[BOOT] MAX7219 display test OFF\n");
     }
+    /* 自检 0.5s 期间 ISR 仍会入队：进主循环前清掉，避免上电误按在启动后补放 */
+    IrRx_Flush();
     SEGGER_RTT_WriteString(0, "[BOOT] PB15 long = recalibrate gyro\n");
     SEGGER_RTT_WriteString(0, "[BOOT] TETRIS page 3: tilt=move tap=rotate/restart\n");
 
@@ -264,6 +266,8 @@ int main(void)
         if (Key_Check(KEY1, KEY_LONG))
         {
             char buf[64];
+            /* 校准 ~1s 内主循环不取队列：先清掉积压，避免校准后集中补放陈旧动作 */
+            IrRx_Flush();
             /* 先刷屏再采样: 软 I2C 整帧 ~13ms 阻塞会污染校准采样 dt */
             OledView_ShowCalibHint(1);
             if (MPU6050_CalibrateGyroBias() == 0)
