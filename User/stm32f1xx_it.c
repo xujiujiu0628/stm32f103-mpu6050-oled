@@ -19,6 +19,14 @@ void SysTick_Handler(void)
     HAL_IncTick();   // HAL 内部 tick（HAL_Delay 依赖）
 }
 
+/**
+  * @brief  EXTI9_5 中断：红外接收（PB6）
+  */
+void EXTI9_5_IRQHandler(void)
+{
+    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_6);
+}
+
 /* ----------- 以下为 HAL 库要求的 ISR 桩（即使不用也需定义） ----------- */
 
 void NMI_Handler(void)              { }

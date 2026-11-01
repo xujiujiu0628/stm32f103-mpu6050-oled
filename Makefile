@@ -49,6 +49,8 @@ User/key/key.c \
 User/oled_view/oled_view.c \
 User/matrix/matrix7219.c \
 User/tetris/tetris.c \
+User/ir/ir_decode.c \
+User/ir/ir_rx.c \
 ThirdParty/RTT/SEGGER_RTT.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_cortex.c \
@@ -110,6 +112,7 @@ C_INCLUDES =  \
 -IUser/key \
 -IUser/matrix \
 -IUser/tetris \
+-IUser/ir \
 -IThirdParty/RTT \
 -IDrivers/STM32F1xx_HAL_Driver/Inc \
 -IDrivers/STM32F1xx_HAL_Driver/Inc/Legacy \
@@ -190,6 +193,8 @@ test: | $(BUILD_DIR)
 	$(BUILD_DIR)/test_brt_band.exe
 	$(HOST_ENV) $(HOST_CC) -pipe -std=c99 -Wall -Wextra -IUser -IUser/tetris -o $(BUILD_DIR)/test_tetris.exe tests/test_tetris.c User/tetris/tetris.c -lm
 	$(BUILD_DIR)/test_tetris.exe
+	$(HOST_ENV) $(HOST_CC) -pipe -std=c99 -Wall -Wextra -IUser -IUser/ir -o $(BUILD_DIR)/test_ir_decode.exe tests/test_ir_decode.c User/ir/ir_decode.c
+	$(BUILD_DIR)/test_ir_decode.exe
 
 #######################################
 # RTT 采集（20s）。脚本在 tools/rtt/ —— 2026-10-26 从 build/ 迁出：build/ 被
