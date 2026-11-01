@@ -50,6 +50,8 @@ static uint8_t  s_tap_pressed;         /* 敲击按下态（|a| 尚未回落） 
 static uint32_t s_tap_cooldown_ms;     /* 敲击冷却倒计时 */
 static uint16_t s_tap_mute_ms;         /* 敲击检测静音倒计时（按键震动抑制） */
 
+static TetrisInputMode s_input_mode;   /* BSS 零值 = TETRIS_INPUT_SENSOR */
+
 /* 重力 */
 static uint32_t s_drop_acc_ms;
 
@@ -197,6 +199,45 @@ void Tetris_Rotate(void)
     }
 }
 
+uint8_t Tetris_SoftDrop(void)
+{
+    if (s_game_over) return 0;
+    if (!collide(&s_cur, s_cur.x, s_cur.y + 1))
+    {
+        s_cur.y++;
+        return 1;
+    }
+    lock_piece();
+    return 0;
+}
+
+uint8_t Tetris_HardDrop(void)
+{
+    uint8_t rows = 0;
+    if (s_game_over) return 0;
+    while (!collide(&s_cur, s_cur.x, s_cur.y + 1))
+    {
+        s_cur.y++;
+        rows++;
+    }
+    lock_piece();
+    return rows;
+}
+
+void Tetris_SetInputMode(TetrisInputMode mode)
+{
+    s_input_mode = mode;
+    /* 两个方向都回到"已武装 / 未按下 / 无冷却"，切换后从干净状态起步 */
+    s_tilt_armed = 1;
+    s_tap_pressed = 0;
+    s_tap_cooldown_ms = 0;
+}
+
+TetrisInputMode Tetris_GetInputMode(void)
+{
+    return s_input_mode;
+}
+
 void Tetris_MuteTap(uint16_t ms)
 {
     s_tap_mute_ms = ms;
@@ -253,14 +294,11 @@ void Tetris_DebugSetBoard(const uint8_t rows[8])
 
 void Tetris_Tick(float tilt_deg, float roll_deg, float ax, float ay, float az)
 {
-    float norm;
     float tilt = TETRIS_TILT_INVERT ? -tilt_deg : tilt_deg;
 
     if (s_tap_cooldown_ms) s_tap_cooldown_ms -= 10;
     if (s_tap_mute_ms >= 10) s_tap_mute_ms -= 10; else s_tap_mute_ms = 0;
     if (s_drop_acc_ms < 0xFFFFFFFFu) s_drop_acc_ms += 10;
-
-    norm = sqrtf(ax * ax + ay * ay + az * az);
 
     if (s_game_over)
     {
@@ -276,41 +314,48 @@ void Tetris_Tick(float tilt_deg, float roll_deg, float ax, float ay, float az)
         return;
     }
 
-    /* --- 倾斜侧移：边沿触发，回中（阈值-死区以内）再武装 --- */
-    if (s_tilt_armed && tilt >= TETRIS_TILT_THRESHOLD)
+    /* 体感判定只在 SENSOR 模式参与；IR 模式仅保留重力与结束计时（遥控器全接管） */
+    if (s_input_mode == TETRIS_INPUT_SENSOR)
     {
-        Tetris_ShiftRight();
-        s_tilt_armed = 0;
-    }
-    else if (s_tilt_armed && tilt <= -TETRIS_TILT_THRESHOLD)
-    {
-        Tetris_ShiftLeft();
-        s_tilt_armed = 0;
-    }
-    else if (!s_tilt_armed && tilt < TETRIS_TILT_THRESHOLD - TETRIS_TILT_DEADBAND
-                            && tilt > -(TETRIS_TILT_THRESHOLD - TETRIS_TILT_DEADBAND))
-    {
-        s_tilt_armed = 1;
-    }
+        float norm = sqrtf(ax * ax + ay * ay + az * az);
 
-    /* --- 敲击旋转：尖峰触发，回落武装 + 冷却双闸；按键震动期间静音 --- */
-    if (!s_tap_pressed && !s_tap_mute_ms && norm >= TETRIS_TAP_PEAK_G && !s_tap_cooldown_ms)
-    {
-        s_tap_pressed = 1;
-        Tetris_Rotate();
-        s_tap_cooldown_ms = TETRIS_TAP_COOLDOWN_MS;
-    }
-    if (s_tap_pressed && norm < TETRIS_TAP_RELEASE_G)
-    {
-        s_tap_pressed = 0;
+        /* --- 倾斜侧移：边沿触发，回中（阈值-死区以内）再武装 --- */
+        if (s_tilt_armed && tilt >= TETRIS_TILT_THRESHOLD)
+        {
+            Tetris_ShiftRight();
+            s_tilt_armed = 0;
+        }
+        else if (s_tilt_armed && tilt <= -TETRIS_TILT_THRESHOLD)
+        {
+            Tetris_ShiftLeft();
+            s_tilt_armed = 0;
+        }
+        else if (!s_tilt_armed && tilt < TETRIS_TILT_THRESHOLD - TETRIS_TILT_DEADBAND
+                                && tilt > -(TETRIS_TILT_THRESHOLD - TETRIS_TILT_DEADBAND))
+        {
+            s_tilt_armed = 1;
+        }
+
+        /* --- 敲击旋转：尖峰触发，回落武装 + 冷却双闸；按键震动期间静音 --- */
+        if (!s_tap_pressed && !s_tap_mute_ms && norm >= TETRIS_TAP_PEAK_G && !s_tap_cooldown_ms)
+        {
+            s_tap_pressed = 1;
+            Tetris_Rotate();
+            s_tap_cooldown_ms = TETRIS_TAP_COOLDOWN_MS;
+        }
+        if (s_tap_pressed && norm < TETRIS_TAP_RELEASE_G)
+        {
+            s_tap_pressed = 0;
+        }
     }
 
     /* --- 重力下落：周期随消行数缩短（每 5 行快 100ms，下限 TETRIS_DROP_MIN_MS）
-     *     软降：roll 超过 ±20° 时 60ms/格（左右滚转板子 = 加速下落） --- */
+     *     软降：仅 SENSOR 模式，roll 超过 ±20° 时 60ms/格 --- */
     {
         uint32_t period = TETRIS_DROP_BASE_MS - (s_lines / 5) * 100U;
         if (period < TETRIS_DROP_MIN_MS) period = TETRIS_DROP_MIN_MS;
-        if (roll_deg >= TETRIS_SOFTDROP_ROLL_DEG || roll_deg <= -TETRIS_SOFTDROP_ROLL_DEG)
+        if (s_input_mode == TETRIS_INPUT_SENSOR &&
+            (roll_deg >= TETRIS_SOFTDROP_ROLL_DEG || roll_deg <= -TETRIS_SOFTDROP_ROLL_DEG))
             period = TETRIS_DROP_SOFT_MS;
         if (s_drop_acc_ms >= period)
         {

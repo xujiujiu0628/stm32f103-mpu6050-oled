@@ -57,6 +57,30 @@ uint8_t Tetris_ShiftRight(void);
 void Tetris_Rotate(void);
 
 /**
+ * @brief  手动软降：下移一格；撞底则锁定并出下一块
+ * @retval 1=下移成功 0=已锁定或游戏结束
+ */
+uint8_t Tetris_SoftDrop(void);
+
+/**
+ * @brief  硬降：一路落到碰撞前，锁定并出下一块（不计分）
+ * @retval 掉落格数（游戏结束时返回 0 且不动作）
+ */
+uint8_t Tetris_HardDrop(void);
+
+/* 输入模式：SENSOR = 体感（倾斜/敲击/roll 软降），IR = 遥控器全接管 */
+typedef enum {
+    TETRIS_INPUT_SENSOR = 0,
+    TETRIS_INPUT_IR = 1
+} TetrisInputMode;
+
+/**
+ * @brief  切换输入源；两个方向都复位体感状态（已武装/未按下/无冷却）
+ */
+void Tetris_SetInputMode(TetrisInputMode mode);
+TetrisInputMode Tetris_GetInputMode(void);
+
+/**
  * @brief  静音敲击检测 ms 毫秒（按键按下时调用，避免按键震动被当成敲击旋转）
  */
 void Tetris_MuteTap(uint16_t ms);
