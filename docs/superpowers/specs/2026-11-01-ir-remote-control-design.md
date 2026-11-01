@@ -119,7 +119,14 @@ uint8_t IrDecode_Edge(uint8_t level, uint32_t dt_us, IrFrame_t *out);
 #define IR_EV_DATA     1
 #define IR_EV_REPEAT   2
 
-typedef struct { uint8_t kind; uint8_t addr; uint8_t cmd; } IrEvent_t;
+typedef struct {
+    uint8_t  kind;      /* IR_EV_DATA / IR_EV_REPEAT */
+    uint8_t  addr;
+    uint8_t  cmd;
+    uint8_t  valid;     /* 1 = 命令补码校验通过（动作门槛） */
+    uint8_t  standard;  /* 1 = 地址补码也成立（扩展 NEC 时为 0） */
+    uint32_t raw;       /* 原始 32 位，供 RTT 扫码/排障打印 */
+} IrEvent_t;
 
 void    IrRx_Init(void);                 /* PB6 EXTI 双边沿 + 优先级 1 */
 uint8_t IrRx_Poll(IrEvent_t *ev);        /* 主循环取事件，1=有 */
@@ -132,7 +139,7 @@ void    Tetris_SetInputMode(TetrisInputMode mode);
 TetrisInputMode Tetris_GetInputMode(void);
 ```
 
-**`Tetris_SetInputMode(IR)` 语义**：`Tetris_Tick` 跳过倾斜侧移、敲击旋转、roll 软降三项判定，**保留**重力下落与游戏结束倒计时，并重置 `s_tilt_armed = 1`、`s_tap_pressed = 0`、`s_tap_cooldown_ms = 0`。切回 SENSOR 时做同样的状态重置，避免切回瞬间残留武装态误触发。
+**`Tetris_SetInputMode(IR)` 语义**：`Tetris_Tick` 跳过倾斜侧移、敲击旋转、roll 软降三项判定，**保留**重力下落与游戏结束倒计时，并重置 `s_tilt_armed = 1`、`s_tap_pressed = 0`、`s_tap_cooldown_ms = 0`。**两个切换方向都做同样的复位**，保证每次切换都从"已武装 / 未按下 / 无冷却"的干净状态起步：IR 期间累积的误触发/按下态不会被带回 SENSOR 模式把横移卡死。
 
 **`Tetris_HardDrop()` 语义**：循环 `y+1` 至碰撞前，然后强制 `lock_piece()`；游戏结束状态返回 0 不动作；返回掉落格数（日志用）。不计分。
 
