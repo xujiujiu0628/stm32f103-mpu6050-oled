@@ -85,9 +85,10 @@ gcc -std=c99 -Wall -Wextra -IUser -IUser/tetris -o build/test_tetris.exe tests/t
 **失败时怎么认**：4 条一起 FAIL、capture 里 `[DIAG] PA0=1` 出现 0 次 → 是没人按，不是固件坏了。
 `verify.py` 此时给的 `agent_hint`（"检查 registry 注册顺序和 printf 格式"）是误导，别顺着它改代码。
 
-### 红外相关人工核对（v0.11 新增，不进 expectations.json）
+### 红外相关人工核对（v0.11 新增，不进机器断言）
 
-三条都是「某段日志不出现」的负向判定，与 FR-IR-02/04 的正向断言同窗冲突，故走人工：
+三条都是「某段日志不出现」的负向判定，与 FR-IR-02/04 的正向断言同窗冲突，故不做机器断言、改走人工核对；
+已在 `.workbench/expectations.json` 的 `waived` 数组登记为豁免（FR-IR-05/06/07，evidence 指向本节）。
 
 | 项 | 动作 | 通过判据 |
 |---|---|---|

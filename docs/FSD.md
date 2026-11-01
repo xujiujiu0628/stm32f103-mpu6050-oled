@@ -211,5 +211,6 @@ ISR 内禁止 `SEGGER_RTT_*`、`snprintf`、`HAL_Delay`；flash 增量 ≤ 4KB�
 
 **Tier**：FR-IR-01~04 走 verify 机器断言（`.workbench/expectations.json`）；
 FR-IR-05/06/07 是「某段日志不出现」的负向判定，与 FR-IR-02/04 的正向断言在同一采集窗内
-互相冲突，不作为机器断言，登记为 README「红外相关人工核对」人工项。
+互相冲突，不作为机器断言，登记为 README「红外相关人工核对」人工项，
+同时在 `.workbench/expectations.json` 的 `waived` 数组登记豁免。
 NFR-05 由代码审读（ISR 内无阻塞调用）与构建尺寸验收覆盖。
