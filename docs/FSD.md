@@ -176,3 +176,40 @@ PA0 / PB8-9 / PB10-11 不变。
 - **Tier**：bench（verify 断言 FR-SAFE-01）
 - **来源**：2026-10-24 fail-closed 整改补录；原 `FR-MPU-02` 仅能约束数据行，
   无法在“数据行仍在但随后崩溃”或“崩溃发生在另一状态”时判红
+
+## 7. 红外遥控需求（v0.11，2026-11-01）
+
+**硬件变更**：0038 一体化红外接收头接入——OUT→**PB6**（EXTI9_5，双边沿触发，空闲高）、
+VCC→3V3、GND→GND。遥控器为常见 NEC 21 键迷你遥控，码值以真机扫出为准
+（`User/ir/ir_keymap.h`，校准流程见 README）。
+
+### FR-IR-01：红外接收初始化
+上电调用 `IrRx_Init()`（PB6 / EXTI9_5 / NVIC 优先级 1），启动日志输出 `[IR] init pin=PB6`。
+
+### FR-IR-02：NEC 帧解码与 `~` 校验
+每收到一个帧输出 `[IR] addr=0xAA cmd=0xCC raw=0xXXXXXXXX`；命令补码不成立时追加 ` BAD` 且不产生动作。取地址只作日志与扩展 NEC 标记，不作动作门槛。
+
+### FR-IR-03：双控制模式
+上电默认 MPU（SENSOR）模式并输出 `[IR] mode=MPU`。MODE 键在两种模式下都生效，切换时输出 `[IR] mode=IR` / `[IR] mode=MPU`。
+
+### FR-IR-04：IR 模式动作
+IR 模式下：左/右移、软降、旋转、硬降由遥控器驱动；旋转输出 `[IR] rotate`，硬降输出 `[IR] harddrop rows=N`。
+
+### FR-IR-05：IR 模式下体感失效
+倾斜、敲击、roll 软降三项判定不参与，重力下落与结束后自动重开照常。
+
+### FR-IR-06：MPU 模式下遥控动作键不生效
+MPU 模式按旋转/硬降/位移键不产生任何游戏动作，也不打印 `[IR] rotate` / `[IR] harddrop`。
+
+### FR-IR-07：重复帧只驱动位移与软降
+按住遥控器产生的重复帧只作用于左/右/软降，旋转/硬降/MODE 忽略重复帧。
+
+### NFR-05：中断纪律与资源
+ISR 内禁止 `SEGGER_RTT_*`、`snprintf`、`HAL_Delay`；flash 增量 ≤ 4KB；RAM 增量 ≤ 96B
+（原定 64B，因 `IrEvent_t` 按 uint32_t 对齐实为 12B、队列 4 深度即 48B，
+2026-11-01 按实测 +72B 裁定放宽到 96B，同步见 spec/plan）。
+
+**Tier**：FR-IR-01~04 走 verify 机器断言（`.workbench/expectations.json`）；
+FR-IR-05/06/07 是「某段日志不出现」的负向判定，与 FR-IR-02/04 的正向断言在同一采集窗内
+互相冲突，不作为机器断言，登记为 README「红外相关人工核对」人工项。
+NFR-05 由代码审读（ISR 内无阻塞调用）与构建尺寸验收覆盖。

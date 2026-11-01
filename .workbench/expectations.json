@@ -103,6 +103,36 @@
       ],
       "capture_group": 1,
       "min": 90
+    },
+    {
+      "id": "FR-IR-01",
+      "desc": "红外接收初始化，启动日志标明引脚",
+      "texts": [
+        "[IR] init pin=PB6"
+      ]
+    },
+    {
+      "id": "FR-IR-02",
+      "desc": "每个 NEC 帧打印地址/命令/原始值",
+      "patterns": [
+        "\\[IR\\] addr=0x[0-9A-F]{2} cmd=0x[0-9A-F]{2} raw=0x[0-9A-F]{8}"
+      ]
+    },
+    {
+      "id": "FR-IR-03",
+      "desc": "MODE 键双向切换（采集窗内按两次）",
+      "texts": [
+        "[IR] mode=IR",
+        "[IR] mode=MPU"
+      ]
+    },
+    {
+      "id": "FR-IR-04",
+      "desc": "IR 模式下旋转与硬降动作（采集窗内各按一次）",
+      "texts": [
+        "[IR] rotate",
+        "[IR] harddrop rows="
+      ]
     }
   ],
   "waived": [
