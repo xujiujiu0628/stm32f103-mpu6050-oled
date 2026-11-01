@@ -243,8 +243,10 @@ static void render_tetris(void)
 
     if (Tetris_IsGameOver())
         My_OLED_ShowString(0, 56, (char *)"NEW GAME...", 6);
+    else if (Tetris_GetInputMode() == TETRIS_INPUT_IR)
+        My_OLED_ShowString(0, 56, (char *)"CTRL:IR  REMOTE", 6);
     else
-        My_OLED_ShowString(0, 56, (char *)"TILT:MOVE PB15:ROT", 6);
+        My_OLED_ShowString(0, 56, (char *)"CTRL:MPU TILT+TAP", 6);
 
     oled_flush();
 }

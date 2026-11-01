@@ -19,6 +19,8 @@
 #include "adc_brt.h"
 #include "matrix7219.h"
 #include "tetris.h"
+#include "ir_rx.h"
+#include "ir_keymap.h"
 #include "SEGGER_RTT.h"
 #include <stdio.h>
 
@@ -28,6 +30,9 @@ volatile uint32_t g_millis = 0;
 /* 时间分频节流（避免在主循环内做 mod 计数） */
 static uint32_t s_last_mpu_tick = 0;   // 上次 MPU6050 采样
 static uint32_t s_last_rtt_tick = 0;   // 上次 RTT 打印
+
+/* 控制模式：0=SENSOR(MPU 体感) 1=IR(遥控器全接管)，上电默认体感 */
+static uint8_t s_ctrl_mode = TETRIS_INPUT_SENSOR;
 
 /* ---------------- 第 1 步实测：刷帧耗时 / 实际采样周期 / 循环节拍 ----------------
  * 1s 一行 RTT 心跳，整数定点打印（nano printf 不认 %f，历史坑）。
@@ -87,6 +92,69 @@ static void perf_tick(uint32_t now)
 static void SystemClock_72MHz(void);
 static void SysTick_Init_1ms(void);
 
+/**
+  * @brief  红外事件派发（主循环调用；ISR 只入队，不做动作）
+  * @note   MODE 键两种模式都生效；其余动作键仅 IR 模式生效；
+  *         重复帧只驱动左/右/软降，旋转与硬降忽略重复帧
+  */
+static void ir_dispatch(void)
+{
+    IrEvent_t ev;
+    char buf[80];
+
+    while (IrRx_Poll(&ev))
+    {
+        if (ev.kind == IR_EV_DATA)
+        {
+            snprintf(buf, sizeof(buf), "[IR] addr=0x%02X cmd=0x%02X raw=0x%08lX%s\n",
+                     (unsigned)ev.addr, (unsigned)ev.cmd, (unsigned long)ev.raw,
+                     ev.valid ? "" : " BAD");
+            SEGGER_RTT_WriteString(0, buf);
+        }
+        if (!ev.valid) continue;                 /* 命令补码不过 → 不动作 */
+
+        if (ev.cmd == IR_KEY_MODE)
+        {
+            if (ev.kind == IR_EV_REPEAT) continue;
+            s_ctrl_mode = (s_ctrl_mode == TETRIS_INPUT_SENSOR)
+                          ? (uint8_t)TETRIS_INPUT_IR : (uint8_t)TETRIS_INPUT_SENSOR;
+            Tetris_SetInputMode((TetrisInputMode)s_ctrl_mode);
+            SEGGER_RTT_WriteString(0, s_ctrl_mode ? "[IR] mode=IR\n" : "[IR] mode=MPU\n");
+            continue;
+        }
+
+        if (s_ctrl_mode != TETRIS_INPUT_IR) continue;   /* MPU 模式下遥控动作键不生效 */
+
+        switch (ev.cmd)
+        {
+        case IR_KEY_LEFT:
+            Tetris_ShiftLeft();
+            break;
+        case IR_KEY_RIGHT:
+            Tetris_ShiftRight();
+            break;
+        case IR_KEY_DOWN:
+            Tetris_SoftDrop();
+            break;
+        case IR_KEY_ROTATE:
+            if (ev.kind == IR_EV_REPEAT) break;
+            Tetris_Rotate();
+            SEGGER_RTT_WriteString(0, "[IR] rotate\n");
+            break;
+        case IR_KEY_HARDDROP:
+            if (ev.kind == IR_EV_REPEAT) break;
+            {
+                uint8_t rows = Tetris_HardDrop();
+                snprintf(buf, sizeof(buf), "[IR] harddrop rows=%u\n", (unsigned)rows);
+                SEGGER_RTT_WriteString(0, buf);
+            }
+            break;
+        default:
+            break;
+        }
+    }
+}
+
 int main(void)
 {
     HAL_Init();
@@ -109,6 +177,9 @@ int main(void)
         SEGGER_RTT_WriteString(0, buf);
     }
     Key_Init();
+    IrRx_Init();
+    SEGGER_RTT_WriteString(0, "[IR] init pin=PB6\n");
+    SEGGER_RTT_WriteString(0, "[IR] mode=MPU\n");
     AdcBrt_Init();
     OledView_Init();
     {
@@ -155,6 +226,9 @@ int main(void)
 
         /* 按键 tick (1ms) */
         Key_Tick();
+
+        /* 红外遥控事件派发（ISR 只入队，动作在这里做） */
+        ir_dispatch();
 
         /* KEY0 (PA0): 单击循环页 / 长按关屏 —— 全功能键标志位接口 */
         {
