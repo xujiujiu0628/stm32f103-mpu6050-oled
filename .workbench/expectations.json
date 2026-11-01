@@ -151,6 +151,12 @@
     { "id": "FR-BRT-03", "reason": "变档 ≤100ms 亮度可察觉变化为人工目测；无周期刷屏占用由 FR-BRT-01 心跳频率断言侧面钉",
       "evidence": "docs/FSD.md#FR-BRT-03", "owner": "maintainer", "date": "2026-09-12" },
     { "id": "FR-CAL-02", "reason": "覆盖层出现/撤销为人工目测；'校准期间禁止穿插刷屏'为代码结构约束（OledView_ShowCalibHint 先刷后采样），fresh-checker 审读面",
-      "evidence": "docs/FSD.md#FR-CAL-02", "owner": "maintainer", "date": "2026-09-12" }
+      "evidence": "docs/FSD.md#FR-CAL-02", "owner": "maintainer", "date": "2026-09-12" },
+    { "id": "FR-IR-05", "reason": "负向判定（IR 模式倾斜板子方块不横移），与 FR-IR-02/04 的正向断言同窗冲突，不做机器断言；走 README 人工核对表",
+      "evidence": "README.md#红外相关人工核对", "owner": "maintainer", "date": "2026-11-02" },
+    { "id": "FR-IR-06", "reason": "负向判定（MPU 模式按遥控旋转键无 [IR] rotate），与 FR-IR-02 的正向断言同窗冲突，不做机器断言；走 README 人工核对表",
+      "evidence": "README.md#红外相关人工核对", "owner": "maintainer", "date": "2026-11-02" },
+    { "id": "FR-IR-07", "reason": "负向判定（IR 模式按住旋转键只出 1 行 [IR] rotate），重复帧时序在采集窗内不可稳定断言；走 README 人工核对表",
+      "evidence": "README.md#红外相关人工核对", "owner": "maintainer", "date": "2026-11-02" }
   ]
 }
