@@ -32,7 +32,7 @@ STM32F103C8T6（Blue Pill）通过 **软件 I2C 读取 MPU6050 6 轴数据**，�
 | MAX7219 CLK | **PA5** | SPI1_SCK（9MHz，CPOL=0/CPHA=1） |
 | MAX7219 CS | **PA4** | 软件片选，低有效 |
 | ST-Link | SWDIO/SWCLK/3V3/GND | 烧录调试 |
-| IR OUT | **PB6** | 0038 一体化接收头输出，EXTI 双边沿（空闲高） |
+| IR OUT | **PB12** | 0038 一体化接收头输出，EXTI 双边沿（空闲高） |
 | IR VCC | **3.3V** | 接收头 2.7–5.5V 可用；用 3.3V 免电平转换 |
 | IR GND | **GND** | — |
 
@@ -43,7 +43,7 @@ STM32F103C8T6（Blue Pill）通过 **软件 I2C 读取 MPU6050 6 轴数据**，�
 > 红外接收头供电建议按 datasheet 串 100Ω + 对地并 100µF；OUT 已开 MCU 内部上拉，长线（>15cm）再并 10k。
 > 0038 三脚定义（OUT/GND/VCC）各厂不一致，**以实物丝印为准**；接反不坏，静态量 OUT 应为 ≈3.3V。
 >
-> 引脚号别混：IR 用的是 **PB6**，亮度电位器的 ADC 输入是 **PA6**（同号不同口，互不影响）。
+> 引脚号别混：IR 用的是 **PB12**（EXTI15_10）。
 
 ## 构建与烧录
 
@@ -198,7 +198,7 @@ gcc -std=c99 -Wall -Wextra -IUser -IUser/tetris -o build/test_tetris.exe tests/t
 
 ## 红外遥控（v0.11）
 
-0038 一体化红外接收头（OUT→PB6，EXTI 双边沿 + DWT 微秒时间戳，详见 [ADR-005](docs/ADR/005-ir-exti-dwt-decode.md)）。
+0038 一体化红外接收头（OUT→PB12，EXTI 双边沿 + DWT 微秒时间戳，详见 [ADR-005](docs/ADR/005-ir-exti-dwt-decode.md)）。
 
 上电默认 MPU 体感模式；按遥控器 MODE 键在 **IR / MPU** 之间切换（OLED 页 3 底部显示 `CTRL:IR` / `CTRL:MPU`）。
 

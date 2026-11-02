@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * @file    ir_rx.c
-  * @brief   PB6(EXTI6) 双边沿接收 + DWT 微秒时间戳
+  * @brief   PB12(EXTI12) 双边沿接收 + DWT 微秒时间戳
   *
   * @优先级   NVIC 1（SysTick 为 0）：毫秒计时与 HAL_Delay 不受影响
   * @回绕     CYCCNT 32 位 @72MHz 每 59.6s 回绕，全部用无符号差值
@@ -15,8 +15,8 @@
 #include "stm32f1xx_hal.h"
 
 #define IR_PORT        GPIOB
-#define IR_PIN         GPIO_PIN_6
-#define IR_IRQn        EXTI9_5_IRQn
+#define IR_PIN         GPIO_PIN_12
+#define IR_IRQn        EXTI15_10_IRQn
 #define IR_NVIC_PRIO   1U
 #define IR_Q_DEPTH     4U
 

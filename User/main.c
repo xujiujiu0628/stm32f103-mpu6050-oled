@@ -178,7 +178,7 @@ int main(void)
     }
     Key_Init();
     IrRx_Init();
-    SEGGER_RTT_WriteString(0, "[IR] init pin=PB6\n");
+    SEGGER_RTT_WriteString(0, "[IR] init pin=PB12\n");
     SEGGER_RTT_WriteString(0, "[IR] mode=MPU\n");
     AdcBrt_Init();
     OledView_Init();

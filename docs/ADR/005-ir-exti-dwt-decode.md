@@ -16,7 +16,7 @@ OLED 走 100% 软件 I2C，单次整帧刷最坏阻塞 ~132ms（见 [ADR-004](00
 
 ## 决策
 
-PB6 配 `GPIO_MODE_IT_RISING_FALLING`（PB6 的引脚 6 与 PA6 的亮度电位器 ADC 同号不同口，
+PB12 配 `GPIO_MODE_IT_RISING_FALLING`（引脚 12 与 PA12 同号不同口，
 互不影响），ISR 只读 `DWT->CYCCNT`（72MHz，13.9ns）算微秒间隔，喂给纯 C 状态机
 `IrDecode_Edge()`；解出完整帧后压入 4 深度环形队列，主循环 `IrRx_Poll()` 取。
 
@@ -40,7 +40,7 @@ PB6 配 `GPIO_MODE_IT_RISING_FALLING`（PB6 的引脚 6 与 PA6 的亮度电位�
 - DWT 由 `IrRx_Init()` 内幂等自使能并重取 `s_last_cyc` 基准，不依赖
   `SystemClock_72MHz()` 的先后顺序（`MyI2C_Init()` 会清零 CYCCNT）。
 - CYCCNT 32 位 @72MHz 每 59.6s 回绕，全部用无符号差值处理。
-- EXTI 回调唯一入口 `HAL_GPIO_EXTI_Callback`（`User/ir/ir_rx.c`）目前只服务 PB6，
+- EXTI 回调唯一入口 `HAL_GPIO_EXTI_Callback`（`User/ir/ir_rx.c`）目前只服务 PB12，
   回调首行按 `GPIO_Pin` 分流；将来若给别的引脚开 EXTI（按键是 20ms 轮询，不走这里），
   必须在此处补分支，否则边沿会被吞。
 - 升级到需要更短码元（如 RC5 的 889µs 半位）的协议时，需重新评估捕获路径。

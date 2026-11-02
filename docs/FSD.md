@@ -179,12 +179,12 @@ PA0 / PB8-9 / PB10-11 不变。
 
 ## 7. 红外遥控需求（v0.11，2026-11-01）
 
-**硬件变更**：0038 一体化红外接收头接入——OUT→**PB6**（EXTI9_5，双边沿触发，空闲高）、
+**硬件变更**：0038 一体化红外接收头接入——OUT→**PB12**（EXTI15_10，双边沿触发，空闲高）、
 VCC→3V3、GND→GND。遥控器为常见 NEC 21 键迷你遥控，码值以真机扫出为准
 （`User/ir/ir_keymap.h`，校准流程见 README）。
 
 ### FR-IR-01：红外接收初始化
-上电调用 `IrRx_Init()`（PB6 / EXTI9_5 / NVIC 优先级 1），启动日志输出 `[IR] init pin=PB6`。
+上电调用 `IrRx_Init()`（PB12 / EXTI15_10 / NVIC 优先级 1），启动日志输出 `[IR] init pin=PB12`。
 
 ### FR-IR-02：NEC 帧解码与 `~` 校验
 每收到一个帧输出 `[IR] addr=0xAA cmd=0xCC raw=0xXXXXXXXX`；命令补码不成立时追加 ` BAD` 且不产生动作。取地址只作日志与扩展 NEC 标记，不作动作门槛。

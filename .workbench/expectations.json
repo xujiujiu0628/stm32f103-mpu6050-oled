@@ -108,7 +108,7 @@
       "id": "FR-IR-01",
       "desc": "红外接收初始化，启动日志标明引脚",
       "texts": [
-        "[IR] init pin=PB6"
+        "[IR] init pin=PB12"
       ]
     },
     {
