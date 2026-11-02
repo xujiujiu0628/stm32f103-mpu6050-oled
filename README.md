@@ -32,10 +32,18 @@ STM32F103C8T6（Blue Pill）通过 **软件 I2C 读取 MPU6050 6 轴数据**，�
 | MAX7219 CLK | **PA5** | SPI1_SCK（9MHz，CPOL=0/CPHA=1） |
 | MAX7219 CS | **PA4** | 软件片选，低有效 |
 | ST-Link | SWDIO/SWCLK/3V3/GND | 烧录调试 |
+| IR OUT | **PB6** | 0038 一体化接收头输出，EXTI 双边沿（空闲高） |
+| IR VCC | **3.3V** | 接收头 2.7–5.5V 可用；用 3.3V 免电平转换 |
+| IR GND | **GND** | — |
 
 > 引脚无冲突；若换引脚：MPU6050 改 `User/mpu6050/mpu6050_i2c.c` 顶部宏，OLED 改 `User/MyI2C.c` 顶部宏。
 >
 > ⚠️ **MAX7219 模块选排针**：不少 8x8 模块出厂只焊了 **DOUT 输出排**（`VCC GND DOUT CS CLK`），输入排在另一侧只有空焊孔（`VCC GND DIN CS CLK`）。接在 DOUT 排上必然全黑（2026-10-26 真机踩坑两次：先误判 3V3 供电，后确认接线在输出排）。数据必须走 DIN 排，没焊针就飞线/补焊。
+
+> 红外接收头供电建议按 datasheet 串 100Ω + 对地并 100µF；OUT 已开 MCU 内部上拉，长线（>15cm）再并 10k。
+> 0038 三脚定义（OUT/GND/VCC）各厂不一致，**以实物丝印为准**；接反不坏，静态量 OUT 应为 ≈3.3V。
+>
+> 引脚号别混：IR 用的是 **PB6**，亮度电位器的 ADC 输入是 **PA6**（同号不同口，互不影响）。
 
 ## 构建与烧录
 
@@ -77,6 +85,16 @@ gcc -std=c99 -Wall -Wextra -IUser -IUser/tetris -o build/test_tetris.exe tests/t
 **失败时怎么认**：4 条一起 FAIL、capture 里 `[DIAG] PA0=1` 出现 0 次 → 是没人按，不是固件坏了。
 `verify.py` 此时给的 `agent_hint`（"检查 registry 注册顺序和 printf 格式"）是误导，别顺着它改代码。
 
+### 红外相关人工核对（v0.11 新增，不进机器断言）
+
+三条都是「某段日志不出现」的负向判定，与 FR-IR-02/04 的正向断言同窗冲突，故不做机器断言、改走人工核对；
+已在 `.workbench/expectations.json` 的 `waived` 数组登记为豁免（FR-IR-05/06/07，evidence 指向本节）。
+
+| 项 | 动作 | 通过判据 |
+|---|---|---|
+| FR-IR-05 | IR 模式下倾斜板子 | 方块不横移；重力仍在下落 |
+| FR-IR-06 | 切回 MPU 模式后按遥控旋转键 | 无 `[IR] rotate`，方块不转 |
+| FR-IR-07 | IR 模式下按住旋转键 2s | 只出现 1 行 `[IR] rotate` |
 
 ## 刷屏与主循环节拍（2026-10-26 真机实测）
 
@@ -178,6 +196,28 @@ gcc -std=c99 -Wall -Wextra -IUser -IUser/tetris -o build/test_tetris.exe tests/t
 - 点阵显示方向若不对（镜像/倒置），改 `Matrix7219_ShowFrame` 里的字节/位映射即可，逻辑层不用动
 - host 单测：`tests/test_tetris.c`（19 例，覆盖碰撞/消行/计分/体感判定/重开）
 
+## 红外遥控（v0.11）
+
+0038 一体化红外接收头（OUT→PB6，EXTI 双边沿 + DWT 微秒时间戳，详见 [ADR-005](docs/ADR/005-ir-exti-dwt-decode.md)）。
+
+上电默认 MPU 体感模式；按遥控器 MODE 键在 **IR / MPU** 之间切换（OLED 页 3 底部显示 `CTRL:IR` / `CTRL:MPU`）。
+
+| 功能 | 默认 cmd | 备注 |
+|---|---|---|
+| 左移 | 0x44 | 按住连发（重复帧） |
+| 右移 | 0x43 | 按住连发 |
+| 软降 | 0x07 | 按住连发 |
+| 旋转 | 0x15 | 不吃重复帧 |
+| 硬降 | 0x40 | 不吃重复帧 |
+| 模式切换 | 0x09 | 两种模式下都生效 |
+
+**键值校准（必做一次）**：烧录后打开 RTT，按一遍遥控器，从 `[IR] addr=0x.. cmd=0x..` 行读出实际码值，
+填进 `User/ir/ir_keymap.h` 重编即可。默认值是常见 21 键迷你遥控，**未实测**。
+
+> 采集窗内验收顺序（顺序影响断言能否拿到）：上电 → 任意按键扫码（默认 MPU 模式下**只出 `[IR] addr=` 行，不产生动作**）
+> → MODE 切到 IR → 旋转 / 位移 / 软降 / 硬降各一次 → MODE 切回 MPU。
+> `[IR] rotate` / `[IR] harddrop rows=` 只在 IR 模式下产生。
+
 ## 使用注意
 
 - **上电后保持板子静止约 1 秒**：启动阶段陀螺仪做零点偏置校准，期间按键不响应属正常；校准完成显示启动画面后即可操作。
@@ -203,6 +243,7 @@ gcc -std=c99 -Wall -Wextra -IUser -IUser/tetris -o build/test_tetris.exe tests/t
 - [ADR-002](docs/ADR/002-key-active-high.md) - PA0 高电平触发
 - [ADR-003](docs/ADR/003-no-dmp.md) - 不用 DMP，纯原始数据+互补滤波
 - [ADR-004](docs/ADR/004-oled-slice-flush.md) - OLED 整帧刷改分片刷（为什么不引入 RTOS）
+- [ADR-005](docs/ADR/005-ir-exti-dwt-decode.md) - 红外接收用 EXTI + DWT 时间戳
 
 ## 复用资源
 

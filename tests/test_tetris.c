@@ -12,6 +12,7 @@
   */
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
 #include "tetris.h"
 
 static int s_fail = 0;
@@ -207,6 +208,81 @@ int main(void)
         CHECK(frame_get(Tetris_GetFrame(), 0, 7) == 1, "行7列0 罐位映射 bit7=x0");
         set_board((const uint8_t[8]){0,0,0,0,0,0,0,0x01});
         CHECK(frame_get(Tetris_GetFrame(), 7, 7) == 1, "行7列7 = bit0");
+    }
+
+    /* --- 硬降：一路落底 + 锁定出新块 --- */
+    {
+        uint8_t rows;
+        Tetris_SetInputMode(TETRIS_INPUT_SENSOR);
+        Tetris_Reset();
+        set_board((const uint8_t[8]){0,0,0,0,0,0,0,0});
+        rows = Tetris_HardDrop();
+        CHECK(rows >= 5, "硬降落底格数 >= 5");
+        CHECK(Tetris_GetFrame()[7] != 0, "硬降后底行有锁定块");
+        CHECK(!Tetris_IsGameOver(), "硬降后未判负");
+        /* 帧里活动块会被并进来，停在底行的块与已锁定的块渲染完全一样；
+         * 再调一次软降：已锁定 → 新块在 y=0 可下移（1）；未锁定 → 卡死在底部（0） */
+        CHECK(Tetris_SoftDrop() == 1, "硬降已锁定并出下一块（新块可下移）");
+    }
+
+    /* --- 软降：逐格下移，到底锁定 --- */
+    {
+        int n = 0;
+        Tetris_SetInputMode(TETRIS_INPUT_SENSOR);
+        Tetris_Reset();
+        set_board((const uint8_t[8]){0,0,0,0,0,0,0,0});
+        while (Tetris_SoftDrop() && n < 20) n++;
+        CHECK(n >= 5, "软降逐格下移");
+        CHECK(Tetris_GetFrame()[7] != 0, "软降到底锁定出块");
+        /* 同硬降：帧分不清"停在底部"和"已锁定"，再调一次软降区分 */
+        CHECK(Tetris_SoftDrop() == 1, "软降已锁定并出下一块（新块可下移）");
+    }
+
+    /* --- IR 模式：倾斜/敲击不动作，重力仍在 --- */
+    {
+        uint8_t snap[8];
+        int i, same;
+        Tetris_SetInputMode(TETRIS_INPUT_IR);
+        Tetris_Reset();
+        set_board((const uint8_t[8]){0,0,0,0,0,0,0,0});
+
+        memcpy(snap, Tetris_GetFrame(), 8);
+        tick_n(-40.0f, 0, 0, 1.0f, 3);          /* 30ms：不足以触发重力 */
+        same = 1;
+        for (i = 0; i < 8; i++) same &= (Tetris_GetFrame()[i] == snap[i]);
+        CHECK(same, "IR 模式：倾斜不横移");
+
+        memcpy(snap, Tetris_GetFrame(), 8);
+        tick_n(0.0f, 0.0f, 0.0f, 2.2f, 2);      /* 敲击尖峰 */
+        same = 1;
+        for (i = 0; i < 8; i++) same &= (Tetris_GetFrame()[i] == snap[i]);
+        CHECK(same, "IR 模式：敲击不旋转");
+
+        memcpy(snap, Tetris_GetFrame(), 8);
+        tick_n(0.0f, 0, 0, 1.0f, 120);          /* 1.2s 重力 */
+        same = 1;
+        for (i = 0; i < 8; i++) same &= (Tetris_GetFrame()[i] == snap[i]);
+        CHECK(!same, "IR 模式：重力仍在");
+    }
+
+    /* --- 切回 SENSOR：把体感状态弄脏，复位后首个 tick 即可正常横移 --- */
+    {
+        uint8_t snap[8];
+        int i, diff = 0;
+        Tetris_SetInputMode(TETRIS_INPUT_SENSOR);
+        Tetris_Reset();
+        set_board((const uint8_t[8]){0,0,0,0,0,0,0,0});
+        tick_n(-40.0f, 0, 0, 1.0f, 1);          /* SENSOR 倾斜一次：武装态耗尽（armed=0） */
+        /* 敲击 tick 必须保持大倾角：若回中（|tilt|<17°）会把 armed 重新置 1，脏状态就白造了 */
+        tick_n(-40.0f, 0.0f, 0.0f, 2.2f, 1);    /* 敲击尖峰：冷却非零（cooldown=200ms） */
+        Tetris_SetInputMode(TETRIS_INPUT_IR);
+        tick_n(-40.0f, 0, 0, 1.0f, 1);          /* IR 模式：不动作，脏状态被冻结 */
+        memcpy(snap, Tetris_GetFrame(), 8);
+        Tetris_SetInputMode(TETRIS_INPUT_SENSOR);   /* 双向复位：armed=1 / pressed=0 / cooldown=0 */
+        tick_n(-40.0f, 0, 0, 1.0f, 1);          /* 切回后第一个 tick 必须横移 */
+        for (i = 0; i < 8; i++) diff |= (Tetris_GetFrame()[i] != snap[i]);
+        CHECK(diff, "切回 SENSOR 后立刻横移（脏状态已复位）");
+        Tetris_SetInputMode(TETRIS_INPUT_SENSOR);
     }
 
     printf("== 结果: %d/%d 通过 ==\n", s_total - s_fail, s_total);

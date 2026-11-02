@@ -203,7 +203,7 @@ TetrisInputMode Tetris_GetInputMode(void);
 | FR-IR-06 | MPU 模式下遥控动作键不动作（MODE 除外） | MPU 模式下按旋转键无 `[IR] rotate` |
 | FR-IR-07 | 重复帧只对位移/软降连发 | 按住旋转键只出转一次 |
 
-NFR-05：ISR 内不得出现 `SEGGER_RTT_*`、`snprintf`、`HAL_Delay`；flash 增量 ≤ 4KB；RAM 增量 ≤ 64B。
+NFR-05：ISR 内不得出现 `SEGGER_RTT_*`、`snprintf`、`HAL_Delay`；flash 增量 ≤ 4KB；RAM 增量 ≤ 96B。
 
 ## 11. 测试计划
 

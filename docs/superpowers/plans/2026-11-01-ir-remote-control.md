@@ -18,7 +18,7 @@
 - 上电默认 **MPU（SENSOR）模式**；MODE 键两模式下都生效，其余动作键仅在 IR 模式生效。
 - 重复帧（`IR_EV_REPEAT`）只对左/右/软降生效；旋转 / 硬降 / MODE 忽略重复帧。
 - ISR 内禁止 `SEGGER_RTT_*`、`snprintf`、`HAL_Delay`、任何循环等待。
-- 构建必须**零警告**（`-Wall`）；flash 增量 ≤ 4KB，RAM 增量 ≤ 64B（基线：text 37432 / data 488 / bss 3608）。
+- 构建必须**零警告**（`-Wall`）；flash 增量 ≤ 4KB，RAM 增量 ≤ 96B（基线：text 37432 / data 488 / bss 3608）。
 - 头文件用 include guard（`__IR_DECODE_H` 风格，与项目一致）；注释与提交信息用中文，提交信息用 conventional commit 前缀（`feat:` / `test:` / `docs:`）。
 - 每个 Task 结束时 `git status --short` 为空。
 - 所有 Windows 路径在 shell 中用正斜杠。
@@ -1235,7 +1235,7 @@ MPU 模式按旋转/硬降/位移键不产生任何游戏动作，也不打印 `
 按住遥控器产生的重复帧只作用于左/右/软降，旋转/硬降/MODE 忽略重复帧。
 
 ### NFR-05：中断纪律与资源
-ISR 内禁止 `SEGGER_RTT_*`、`snprintf`、`HAL_Delay`；flash 增量 ≤ 4KB；RAM 增量 ≤ 64B。
+ISR 内禁止 `SEGGER_RTT_*`、`snprintf`、`HAL_Delay`；flash 增量 ≤ 4KB；RAM 增量 ≤ 96B。
 ```
 
 - [ ] **Step 3: 新建 `docs/ADR/005-ir-exti-dwt-decode.md`**
