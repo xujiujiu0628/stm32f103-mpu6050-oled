@@ -53,7 +53,7 @@ make clean && make       # 构建，预期零警告；产物 build/mpu6050-oled.
 make flash               # OpenOCD + ST-Link 烧录（需已连接板子）
 
 # 真机验证（verify.py 全链路）
-python D:\claude\embedded-toolkit\scripts\verify.py --project .
+python D:\claude-embed\embedded-toolkit\scripts\verify.py --project .
 
 # host 单测（Git Bash，需 MSYS2 mingw64 gcc 在 PATH）
 export PATH="/c/msys64/mingw64/bin:$PATH"
