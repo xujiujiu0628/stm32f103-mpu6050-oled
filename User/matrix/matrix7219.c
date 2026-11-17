@@ -132,6 +132,11 @@ void Matrix7219_SetIntensity(uint8_t intensity)
     Matrix7219_WriteRegister(MAX7219_REG_INTENSITY, intensity);
 }
 
+uint8_t Matrix7219_GetIntensity(void)
+{
+    return s_intensity;
+}
+
 void Matrix7219_Shutdown(uint8_t off)
 {
     Matrix7219_WriteRegister(MAX7219_REG_SHUTDOWN, off ? 0x00 : 0x01);

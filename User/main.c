@@ -183,16 +183,24 @@ int main(void)
     AdcBrt_Init();
     OledView_Init();
     {
-        /* 点阵自检：init 返回 SPI 发送状态；display test 全亮 0.5s 验证模块供电/接线 */
+        /* 点阵自检（2026-11-17 改低电流版）：原 display test 强制 64 颗 LED
+         * 全亮，实测把供电/调试链路拉垮——resume 后 1.5s SWD 就失联、RTT 停在
+         * 启动那几行。改成只点亮一行 8 颗 + 最低亮度，仍能确认"模块活着"，
+         * 峰值电流降到原来的 1/8（数量）× 1/15（占空比）。 */
         uint8_t mx_rc = Matrix7219_Init();
         char buf[64];
         snprintf(buf, sizeof(buf), "[BOOT] MAX7219 init rc=%u\n", (unsigned)mx_rc);
         SEGGER_RTT_WriteString(0, buf);
-        Matrix7219_DisplayTest(1);
-        SEGGER_RTT_WriteString(0, "[BOOT] MAX7219 display test ON (0.5s)\n");
-        HAL_Delay(500);
-        Matrix7219_DisplayTest(0);
-        SEGGER_RTT_WriteString(0, "[BOOT] MAX7219 display test OFF\n");
+        {
+            uint8_t row[8] = { 0xFF, 0, 0, 0, 0, 0, 0, 0 };
+            uint8_t prev = Matrix7219_GetIntensity();
+            Matrix7219_SetIntensity(0x01);
+            Matrix7219_ShowFrame(row);
+            HAL_Delay(300);
+            Matrix7219_SetIntensity(prev);   /* 恢复亮度档 */
+            Matrix7219_Reconfig();           /* 清屏 */
+        }
+        SEGGER_RTT_WriteString(0, "[BOOT] MAX7219 selftest: 1 row @low (0.3s)\n");
     }
     /* 自检 0.5s 期间 ISR 仍会入队：进主循环前清掉，避免上电误按在启动后补放 */
     IrRx_Flush();

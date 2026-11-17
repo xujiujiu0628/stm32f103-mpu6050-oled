@@ -46,6 +46,11 @@ void Matrix7219_ShowFrame(const uint8_t frame[8]);
 void Matrix7219_SetIntensity(uint8_t intensity);
 
 /**
+ * @brief  读回当前亮度档（0x0~0xF）。自检临时降亮后用它恢复。
+ */
+uint8_t Matrix7219_GetIntensity(void);
+
+/**
  * @brief  关闭/点亮点阵（shutdown 寄存器）
  */
 void Matrix7219_Shutdown(uint8_t off);
