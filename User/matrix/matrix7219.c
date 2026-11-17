@@ -62,6 +62,10 @@ uint8_t Matrix7219_WriteRegister(uint8_t reg, uint8_t val)
     return 0;                    /* 软件翻转没有 HAL 状态码可报，恒 0 */
 }
 
+/* 当前亮度档（0x0~0xF）。由电位器三档驱动，见 adc_brt.c；
+ * 重发配置时用它而不是常量，否则上电那 5 秒的重发会把亮度打回默认。 */
+static uint8_t s_intensity = MATRIX_INTENSITY_MID;
+
 /* 配置序列（decode/scan/intensity/shutdown）。抽出来是为了能在电源稳定后
  * 再下发一遍：2026-11-17 真机实测，上电瞬间那串写在模块 5V 还没稳时被芯片
  * 丢掉 → 停在 shutdown 状态 —— 表现为"上电亮一下（display test 照常生效）、
@@ -71,7 +75,7 @@ static void mx_config(void)
     Matrix7219_WriteRegister(MAX7219_REG_SHUTDOWN,  0x00);  /* 配置期间先关显示 */
     Matrix7219_WriteRegister(MAX7219_REG_DECODE,    0x00);  /* BCD 译码关：直接点阵模式 */
     Matrix7219_WriteRegister(MAX7219_REG_SCANLIMIT, 0x07);  /* 8 行全扫 */
-    Matrix7219_WriteRegister(MAX7219_REG_INTENSITY, MATRIX_INTENSITY_MID);
+    Matrix7219_WriteRegister(MAX7219_REG_INTENSITY, s_intensity);
     Matrix7219_WriteRegister(MAX7219_REG_SHUTDOWN,  0x01);  /* 正常工作 */
 }
 
@@ -124,6 +128,7 @@ void Matrix7219_ShowFrame(const uint8_t frame[8])
 void Matrix7219_SetIntensity(uint8_t intensity)
 {
     if (intensity > 0x0F) intensity = 0x0F;
+    s_intensity = intensity;                     /* 记住档位，供重发配置使用 */
     Matrix7219_WriteRegister(MAX7219_REG_INTENSITY, intensity);
 }
 

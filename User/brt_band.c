@@ -52,3 +52,14 @@ uint8_t AdcBrt_ContrastOf(Brt_Band_t band)
     default:            return BRT_CONTRAST_MID;
     }
 }
+
+uint8_t AdcBrt_MatrixIntensityOf(Brt_Band_t band)
+{
+    switch (band)
+    {
+    case BRT_BAND_LOW:  return BRT_MATRIX_LOW;
+    case BRT_BAND_HIGH: return BRT_MATRIX_HIGH;
+    case BRT_BAND_MID:
+    default:            return BRT_MATRIX_MID;
+    }
+}

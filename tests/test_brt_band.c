@@ -84,6 +84,23 @@ int main(void)
     EQ(AdcBrt_ContrastOf(BRT_BAND_MID),  BRT_CONTRAST_MID,  "对比度 MID=0x8E");
     EQ(AdcBrt_ContrastOf(BRT_BAND_HIGH), BRT_CONTRAST_HIGH, "对比度 HIGH=0xFF");
 
+    /* --- 点阵亮度查表（2026-11-17: 同一只电位器同时驱动 OLED 与点阵） --- */
+    EQ(AdcBrt_MatrixIntensityOf(BRT_BAND_LOW),  BRT_MATRIX_LOW,  "点阵亮度 LOW=0x02");
+    EQ(AdcBrt_MatrixIntensityOf(BRT_BAND_MID),  BRT_MATRIX_MID,  "点阵亮度 MID=0x07");
+    EQ(AdcBrt_MatrixIntensityOf(BRT_BAND_HIGH), BRT_MATRIX_HIGH, "点阵亮度 HIGH=0x0F");
+    EQ(AdcBrt_MatrixIntensityOf((Brt_Band_t)99), BRT_MATRIX_MID, "非法档位兜底 MID");
+    /* 单调性与寄存器范围：低<中<高，且都在 0x0~0xF 内 */
+    if (!(BRT_MATRIX_LOW < BRT_MATRIX_MID && BRT_MATRIX_MID < BRT_MATRIX_HIGH))
+    {
+        printf("FAIL 点阵亮度必须单调递增\n");
+        s_fail++;
+    }
+    if (BRT_MATRIX_HIGH > 0x0FU)
+    {
+        printf("FAIL 点阵亮度超出 0x0~0xF\n");
+        s_fail++;
+    }
+
     printf("== 结果: %d/%d 通过 ==\n", s_total - s_fail, s_total);
     return s_fail ? 1 : 0;
 }

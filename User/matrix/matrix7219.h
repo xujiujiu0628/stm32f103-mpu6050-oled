@@ -7,8 +7,9 @@
  * 帧格式：8 字节，每字节一行（DIG0..DIG7），bit7 = 该行最左列 */
 
 /* 亮度档位（0x0~0xF，写 0x0A 寄存器）
- * 2026-11-17 排查: 原值 0x04（27%）在软位翻转下几乎看不见，先临时拉满做对照 */
-#define MATRIX_INTENSITY_MID   0x0F
+ * 2026-11-17 起由电位器三档驱动（adc_brt.c 变档时调 Matrix7219_SetIntensity），
+ * 此宏只作为上电默认值，与 BRT_MATRIX_MID 保持一致。 */
+#define MATRIX_INTENSITY_MID   0x07
 
 /**
  * @brief  初始化：GPIO/SPI1 外设 + MAX7219 寄存器配置（decode off/scan 7/intensity/shutdown off）

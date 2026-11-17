@@ -23,6 +23,7 @@
   */
 #include "adc_brt.h"
 #include "My_OLED.h"
+#include "matrix7219.h"
 #include "stm32f1xx_hal.h"
 #include <stdio.h>
 #include "SEGGER_RTT.h"
@@ -111,6 +112,9 @@ static void band_log_apply(Brt_Band_t next, uint32_t now)
     {
         s_band        = next;
         s_cmd_pending = 1;                     /* 变档 → 命令待发 */
+        /* 同一只电位器同时驱动点阵亮度（2026-11-17）。点阵不受 OLED 关屏
+         * 联动影响，所以放在 s_screen_on 判断之外。 */
+        Matrix7219_SetIntensity(AdcBrt_MatrixIntensityOf(s_band));
     }
     if (s_cmd_pending && s_screen_on)
     {

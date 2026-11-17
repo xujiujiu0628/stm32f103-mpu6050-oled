@@ -32,6 +32,12 @@ typedef enum {
 #define BRT_CONTRAST_MID   0x8EU   /* 屏默认对比度 */
 #define BRT_CONTRAST_HIGH  0xFFU
 
+/* MAX7219 亮度寄存器 (0x0A, 0x0~0xF) 三档取值 —— 2026-11-17 起同一只电位器
+ * 同时驱动 OLED 对比度与点阵亮度，两边的档位必须同步，故查表也放这里。 */
+#define BRT_MATRIX_LOW     0x02U
+#define BRT_MATRIX_MID     0x07U
+#define BRT_MATRIX_HIGH    0x0FU
+
 /**
  * @brief  滞回档位状态机（纯函数）
  * @param  mv        本次平均电压 (mV)
@@ -52,5 +58,8 @@ Brt_Band_t AdcBrt_NextBand(uint16_t mv, Brt_Band_t cur);
 
 /* 档位 → 对比度查表 */
 uint8_t AdcBrt_ContrastOf(Brt_Band_t band);
+
+/* 档位 → MAX7219 亮度查表（0x0~0xF）。越界入参按 MID 处理。 */
+uint8_t AdcBrt_MatrixIntensityOf(Brt_Band_t band);
 
 #endif /* BRT_BAND_H */
