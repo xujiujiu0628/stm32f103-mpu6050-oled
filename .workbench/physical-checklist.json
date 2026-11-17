@@ -44,8 +44,8 @@
     {
       "id": "ADC-1",
       "cat": "极性",
-      "text": "亮度电位器 PA6(ADC1_IN6)：中间抽头→PA6，两端→3V3/GND。",
-      "source": "User/adc_brt.c:6",
+      "text": "亮度电位器：中间抽头→PA5（ADC1_IN5），两端→3V3/GND。2026-11-17 由 PA6 改，接线要跟着动。",
+      "source": "User/adc_brt.c:32,78",
       "why": "抽头与端头接反会把 ADC 直接拉到电源轨，亮度三档失效。"
     },
     {
@@ -67,6 +67,13 @@
       "text": "日志走 RTT（经 ST-Link），不需要额外串口线；烧录前确认 RTT 控制块能在 SRAM 0x20000000 起 2KB 内找到。",
       "source": ".workbench/config.json:capture",
       "why": "capture 后端是 rtt 不是 semihosting，接错后端会得到空输出并误判为固件没跑。"
+    },
+    {
+      "id": "MATRIX-1",
+      "cat": "极性",
+      "text": "8x8 点阵：CLK→PA6、DIN→PA7、CS→PA4，模块 VCC=5V（3V3 不工作）。2026-11-17 起 CLK 由 PA5 改到 PA6。",
+      "source": "User/matrix/matrix7219.c:27-30 + README 引脚表",
+      "why": "DIN 接到 DOUT 那排、或 VCC 给 3V3，都是点阵全黑的经典原因（2026-10-26 真机踩过）。"
     },
     {
       "id": "DEV-1",

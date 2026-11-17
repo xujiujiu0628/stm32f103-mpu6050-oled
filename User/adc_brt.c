@@ -3,7 +3,8 @@
   * @file    adc_brt.c
   * @brief   电位器亮度控制实现（采样层；档位逻辑见 brt_band.c 纯函数）
   *
-  * @硬件    PA6 = ADC1_IN6。电位器三脚：中间抽头→PA6，两端→3V3/GND。
+  * @硬件    PA5 = ADC1_IN5。电位器三脚：中间抽头→PA5，两端→3V3/GND。
+  *          （2026-11-17 由 PA6/ADC1_IN6 改；PA6 腾给 8x8 点阵的 CLK）
   *
   * @要点（沿用 adc-oled bsp_adc 趟平的 F1 HAL 路线，防再踩）：
   *   - ADCCLK = PCLK2/6 = 12MHz（<14MHz 上限）
@@ -29,7 +30,7 @@
 extern volatile uint32_t g_millis;
 
 #define BRT_ADC_DEV        ADC1
-#define BRT_ADC_CH         ADC_CHANNEL_6        /* PA6 */
+#define BRT_ADC_CH         ADC_CHANNEL_5        /* PA5（2026-11-17 由 PA6 改，PA6 让给点阵 CLK） */
 #define BRT_EVAL_MS        50U
 #define BRT_AVG_N          8U
 
@@ -75,7 +76,7 @@ void AdcBrt_Init(void)
     __HAL_RCC_ADC1_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
 
-    gpio.Pin  = GPIO_PIN_6;
+    gpio.Pin  = GPIO_PIN_5;
     gpio.Mode = GPIO_MODE_ANALOG;
     gpio.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOA, &gpio);

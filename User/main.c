@@ -335,6 +335,19 @@ int main(void)
             SEGGER_RTT_WriteString(0, buf);
         }
 
+        /* 2026-11-17: 上电后头 5 秒每秒重发一次点阵配置。
+         * 起因: 上电瞬间下发的配置可能被模块丢掉 → 芯片停在 shutdown
+         * （display test 照常亮、数字寄存器不显示，现象是"亮一下之后全黑"）。
+         * 模块何时真正就绪没有读回手段，所以不赌固定延时，改成定时重试。 */
+        static uint8_t  s_reconfig_left = 5;
+        static uint32_t s_reconfig_tick = 0;
+        if (s_reconfig_left && (uint32_t)(now - s_reconfig_tick) >= 1000u)
+        {
+            s_reconfig_tick = now;
+            s_reconfig_left--;
+            Matrix7219_Reconfig();
+        }
+
         /* PA0 诊断：每 2s 打印一次电平（确认硬件极性） */
         static uint32_t s_last_diag_tick = 0;
         if (now - s_last_diag_tick >= 2000)

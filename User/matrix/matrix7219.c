@@ -1,15 +1,15 @@
 /**
   ******************************************************************************
   * @file    matrix7219.c
-  * @brief   MAX7219 8x8 点阵驱动（SPI1 硬件外设，PA4=CS 软件片控）
+  * @brief   MAX7219 8x8 点阵驱动（软件位翻转：PA6=CLK、PA7=DIN、PA4=CS）
   *
-  * @时序    MAX7219 在 CLK 上升沿采样 DIN（datasheet），对应 SPI 模式 0
-  *          （CPOL=0 + CPHA=1EDGE：上升沿采样、下降沿换数据）。
-  *          模式 1（2EDGE）会让比特流错位一位 → shutdown 寄存器写不进 →
-  *          芯片停在上电默认的关显状态 → 点阵全黑（2026-10-26 真机踩坑）。
+  * @时序    MAX7219 在 CLK 上升沿采样 DIN（datasheet）：
+  *          数据先摆好 → CLK 拉高（采样）→ CLK 拉低（换下一位）。
+  *          2026-10-26 真机踩坑留档：模式写错（2EDGE 等价）会让比特流错位一位
+  *          → shutdown 寄存器写不进 → 芯片停在上电默认关显 → 点阵全黑。
   *          16bit 帧 = [D15..D12 无效][D11..D8 寄存器][D7..D0 数据]，
   *          MSB first，CS 上升沿锁存。
-  * @速率    预分频 16 → 4.5MHz（datasheet 上限 10MHz；降一半给杜邦线留余量）
+  * @速率    软件翻转，每边沿插 2 条 NOP（72MHz 下约 60ns），远低于 datasheet 10MHz 上限
   ******************************************************************************
   */
 #include "matrix7219.h"
@@ -23,61 +23,90 @@
 #define MAX7219_REG_DISPTEST  0x0F
 #define MAX7219_REG_DIGIT0    0x01   /* DIG0..DIG7 = 0x01..0x08 */
 
-static SPI_HandleTypeDef s_hspi;
+/* 2026-11-17 引脚重排（用户要求）：电位器挪到 PA5/ADC1_IN5，PA6 改为点阵 CLK。
+ * 硬件 SPI1 的 SCK 固定在 PA5，腾不出来 → 点阵改为软件位翻转：
+ *   PA6 = CLK、PA7 = DIN、PA4 = CS（软件片控，低有效）。
+ * 帧时序同原 SPI 模式 0：CS 低 → 16bit MSB first → CS 上升沿锁存。 */
+#define MX_CLK_PIN   GPIO_PIN_6
+#define MX_DIN_PIN   GPIO_PIN_7
+#define MX_CS_PIN    GPIO_PIN_4
+
+/* MAX7219 时序下限（V+=5V datasheet）: tCH/tCL ≥ 50ns, tDS/tDH ≥ 25ns。
+ * 72MHz 下 1 NOP ≈ 13.9ns → 8 条 ≈ 110ns，留一倍余量。
+ * 2026-11-17 真机: 首版只插 2 条 NOP(≈28ns) 低于 tCH 下限，点阵全黑。 */
+static void mx_delay(void)
+{
+    __NOP(); __NOP(); __NOP(); __NOP();
+    __NOP(); __NOP(); __NOP(); __NOP();
+}
+
+static void mx_send16(uint16_t v)
+{
+    int i;
+    for (i = 15; i >= 0; i--) {
+        HAL_GPIO_WritePin(GPIOA, MX_DIN_PIN,
+                          (v & (1U << i)) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+        mx_delay();                                           /* DIN 建立 ≥25ns */
+        HAL_GPIO_WritePin(GPIOA, MX_CLK_PIN, GPIO_PIN_SET);   /* 上升沿采样 */
+        mx_delay();                                           /* 高电平 ≥50ns */
+        HAL_GPIO_WritePin(GPIOA, MX_CLK_PIN, GPIO_PIN_RESET);
+        mx_delay();                                           /* 低电平 ≥50ns */
+    }
+}
 
 uint8_t Matrix7219_WriteRegister(uint8_t reg, uint8_t val)
 {
-    uint8_t tx[2] = { reg, val };
-    uint8_t rc;
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-    rc = (uint8_t)HAL_SPI_Transmit(&s_hspi, tx, 2, 10);
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-    return rc;
+    HAL_GPIO_WritePin(GPIOA, MX_CS_PIN, GPIO_PIN_RESET);
+    mx_send16((uint16_t)(((uint16_t)reg << 8) | val));
+    HAL_GPIO_WritePin(GPIOA, MX_CS_PIN, GPIO_PIN_SET);   /* 上升沿锁存 */
+    return 0;                    /* 软件翻转没有 HAL 状态码可报，恒 0 */
+}
+
+/* 配置序列（decode/scan/intensity/shutdown）。抽出来是为了能在电源稳定后
+ * 再下发一遍：2026-11-17 真机实测，上电瞬间那串写在模块 5V 还没稳时被芯片
+ * 丢掉 → 停在 shutdown 状态 —— 表现为"上电亮一下（display test 照常生效）、
+ * 之后全黑（数字寄存器在 shutdown 下不显示）"。 */
+static void mx_config(void)
+{
+    Matrix7219_WriteRegister(MAX7219_REG_SHUTDOWN,  0x00);  /* 配置期间先关显示 */
+    Matrix7219_WriteRegister(MAX7219_REG_DECODE,    0x00);  /* BCD 译码关：直接点阵模式 */
+    Matrix7219_WriteRegister(MAX7219_REG_SCANLIMIT, 0x07);  /* 8 行全扫 */
+    Matrix7219_WriteRegister(MAX7219_REG_INTENSITY, MATRIX_INTENSITY_MID);
+    Matrix7219_WriteRegister(MAX7219_REG_SHUTDOWN,  0x01);  /* 正常工作 */
 }
 
 uint8_t Matrix7219_Init(void)
 {
     GPIO_InitTypeDef gpio = {0};
-    uint8_t worst = 0, rc;
 
-    __HAL_RCC_SPI1_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
 
-    /* PA5=SCK, PA7=MOSI：复用推挽；PA4=CS：软件控制推挽，初始拉高（未选中） */
-    gpio.Pin   = GPIO_PIN_5 | GPIO_PIN_7;
-    gpio.Mode  = GPIO_MODE_AF_PP;
+    /* PA6=CLK / PA7=DIN / PA4=CS：全部推挽输出；CS 初始拉高（未选中），CLK 空闲低 */
+    gpio.Pin   = MX_CLK_PIN | MX_DIN_PIN | MX_CS_PIN;
+    gpio.Mode  = GPIO_MODE_OUTPUT_PP;
     gpio.Speed = GPIO_SPEED_FREQ_HIGH;
     HAL_GPIO_Init(GPIOA, &gpio);
+    HAL_GPIO_WritePin(GPIOA, MX_CS_PIN,  GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOA, MX_CLK_PIN, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOA, MX_DIN_PIN, GPIO_PIN_RESET);
 
-    gpio.Pin  = GPIO_PIN_4;
-    gpio.Mode = GPIO_MODE_OUTPUT_PP;
-    HAL_GPIO_Init(GPIOA, &gpio);
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-
-    s_hspi.Instance               = SPI1;
-    s_hspi.Init.Mode              = SPI_MODE_MASTER;
-    s_hspi.Init.Direction         = SPI_DIRECTION_2LINES;   /* F1 HAL 无 TXONLY，MISO 不接即可 */
-    s_hspi.Init.DataSize          = SPI_DATASIZE_8BIT;
-    s_hspi.Init.CLKPolarity       = SPI_POLARITY_LOW;
-    s_hspi.Init.CLKPhase          = SPI_PHASE_1EDGE;   /* 模式 0：CLK 上升沿采样，MAX7219 规格 */
-    s_hspi.Init.NSS               = SPI_NSS_SOFT;
-    s_hspi.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;   /* 72/16 = 4.5MHz */
-    s_hspi.Init.FirstBit          = SPI_FIRSTBIT_MSB;
-    HAL_SPI_Init(&s_hspi);
-    __HAL_SPI_ENABLE(&s_hspi);
-
-    /* MAX7219 上电默认 shutdown + 全灭，按 datasheet 顺序初始化 */
-    rc = Matrix7219_WriteRegister(MAX7219_REG_SHUTDOWN,  0x00);  if (rc && !worst) worst = rc;  /* 配置期间先关显示 */
-    rc = Matrix7219_WriteRegister(MAX7219_REG_DECODE,    0x00);  if (rc && !worst) worst = rc;  /* BCD 译码关：直接点阵模式 */
-    rc = Matrix7219_WriteRegister(MAX7219_REG_SCANLIMIT, 0x07);  if (rc && !worst) worst = rc;  /* 8 行全扫 */
-    rc = Matrix7219_WriteRegister(MAX7219_REG_INTENSITY, MATRIX_INTENSITY_MID); if (rc && !worst) worst = rc;
-    rc = Matrix7219_WriteRegister(MAX7219_REG_SHUTDOWN,  0x01);  if (rc && !worst) worst = rc;  /* 正常工作 */
+    mx_config();
 
     {
         uint8_t blank[8] = {0};
         Matrix7219_ShowFrame(blank);
     }
-    return worst;
+    return 0;
+}
+
+/* 电源稳定后重新下发配置（见 mx_config 注释）。幂等，可重复调用。 */
+void Matrix7219_Reconfig(void)
+{
+    mx_config();
+    {
+        uint8_t blank[8] = {0};
+        Matrix7219_ShowFrame(blank);
+    }
 }
 
 void Matrix7219_DisplayTest(uint8_t on)

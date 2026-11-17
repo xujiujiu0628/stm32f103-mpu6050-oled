@@ -7,7 +7,7 @@ STM32F103C8T6（Blue Pill）通过 **软件 I2C 读取 MPU6050 6 轴数据**，�
 - 库/工具链：HAL + arm-none-eabi-gcc + MSYS2 make（沿用 adc-oled 骨架）
 - MPU6050：PB10/PB11 软件 I2C（400kHz，独立总线）
 - OLED：PB8/PB9 软件 I2C（100kHz，沿用 adc-oled MyI2C/My_OLED）
-- MAX7219：SPI1 硬件外设（PA5/PA7，PA4 软件片选）
+- MAX7219：软件位翻转（CLK=PA6、DIN=PA7，PA4 软件片选）
 - 通信：双 I2C 总线独立 + SPI 独立，互不干扰
 - 姿态解算：互补滤波（α=0.98，不用 DMP）— 详见 [ADR-003](docs/ADR/003-no-dmp.md)
 
@@ -28,9 +28,11 @@ STM32F103C8T6（Blue Pill）通过 **软件 I2C 读取 MPU6050 6 轴数据**，�
 | 按键另一脚 | 3V3 | — |
 | MAX7219 VCC | **5V**（datasheet 下限 4.0V；**接 3V3 不工作**——2026-10-26 真机踩坑，点阵全黑） | — |
 | MAX7219 GND | GND | — |
-| MAX7219 DIN | **PA7** | SPI1_MOSI。**必须接标 DIN 的那一排针**（另一排 DOUT 是级联输出，接上必然全黑——2026-10-26 真机踩坑） |
-| MAX7219 CLK | **PA5** | SPI1_SCK（9MHz，CPOL=0/CPHA=1） |
+| MAX7219 DIN | **PA7** | 软件位翻转 DIN。**必须接标 DIN 的那一排针**（另一排 DOUT 是级联输出，接上必然全黑——2026-10-26 真机踩坑） |
+| MAX7219 CLK | **PA6** | 软件位翻转 CLK（2026-11-17 由 PA5 改，PA5 让给电位器 ADC；原 SPI1 硬件外设退役） |
 | MAX7219 CS | **PA4** | 软件片选，低有效 |
+| 电位器抽头 | **PA5** | ADC1_IN5（2026-11-17 由 PA6 改） |
+| 电位器两端 | 3V3 / GND | — |
 | ST-Link | SWDIO/SWCLK/3V3/GND | 烧录调试 |
 | IR OUT | **PB12** | 0038 一体化接收头输出，EXTI 双边沿（空闲高） |
 | IR VCC | **3.3V** | 接收头 2.7–5.5V 可用；用 3.3V 免电平转换 |
