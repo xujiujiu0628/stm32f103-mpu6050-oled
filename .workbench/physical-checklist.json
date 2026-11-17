@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "attest_ttl_hours": 12,
+  "items": [
+    {
+      "id": "PWR-1",
+      "cat": "供电",
+      "text": "3V3 轨实测 3.3V±0.15V（ST-Link 供电或外部电源）；Blue Pill、MPU6050、SSD1306 三者共地。",
+      "why": "共地没接时一切读数都像「通信坏」，先量电源能省一整轮归因。"
+    },
+    {
+      "id": "CON-1",
+      "cat": "接触",
+      "text": "杜邦线逐根轻拉不脱；MPU6050 探测失败（显示屏出现 MPU6050 FAIL）时先整排重插，再改代码。",
+      "why": "2026-10-08 单场三次抽风，每次都是重插杜邦线 + USB 拔插解决。"
+    },
+    {
+      "id": "CON-2",
+      "cat": "接触",
+      "text": "SWD 四线（3V3/GND/SWDIO/SWCLK）在正确排针上，没有插偏一格。",
+      "why": "SWDIO/SWCLK 插偏一格的表现是「找不到探针」，与适配器损坏极像。"
+    },
+    {
+      "id": "I2C-1",
+      "cat": "极性",
+      "text": "软件 I2C：SCL=PB8、SDA=PB9（同一 GPIOB 端口）。MPU6050 与 SSD1306 挂同一组总线，两模块 VCC=3V3。",
+      "source": "User/MyI2C.c:16-19",
+      "why": "SCL/SDA 接反或跨端口时，总线会一直忙/读不到 ACK，看起来像器件坏。"
+    },
+    {
+      "id": "I2C-2",
+      "cat": "器件",
+      "text": "MPU6050 的 AD0 接地 = 地址 0x68（接 3V3 = 0x69）。固件先探 0x68，失败回退 0x69；WHO_AM_I 应为 0x68。",
+      "source": "docs/FSD.md:21-24",
+      "why": "2026-08 曾把 8 位地址当 7 位传，读不到就以为模块坏。"
+    },
+    {
+      "id": "KEY-1",
+      "cat": "极性",
+      "text": "KEY0=PA0 按下为高（内部下拉），KEY1=PB15 按下为低（内部上拉）——两者极性相反，别混。",
+      "source": "User/key/key.c:31-32",
+      "why": "PA0 极性曾随接线方式漂移，固件里保留每 2s 的电平诊断打印。"
+    },
+    {
+      "id": "ADC-1",
+      "cat": "极性",
+      "text": "亮度电位器 PA6(ADC1_IN6)：中间抽头→PA6，两端→3V3/GND。",
+      "source": "User/adc_brt.c:6",
+      "why": "抽头与端头接反会把 ADC 直接拉到电源轨，亮度三档失效。"
+    },
+    {
+      "id": "IR-1",
+      "cat": "极性",
+      "text": "红外接收头 OUT→PB12（EXTI12），VCC=3V3、GND 共地。",
+      "source": "User/ir/ir_rx.c:4",
+      "why": "EXTI 收不到边沿时，先确认 OUT 接的是 PB12 而不是相邻脚。"
+    },
+    {
+      "id": "PROBE-1",
+      "cat": "拔线",
+      "text": "没有别的窗口/会话/McuBuddy/OpenOCD 占着同一个 ST-Link；连不上时先问人有没有拔线，再查环境，最后才怀疑适配器。",
+      "why": "2026-08-26/27 两次把「用户自己拔的线」写成「克隆 ST-Link 间歇失联」。"
+    },
+    {
+      "id": "RTT-1",
+      "cat": "器件",
+      "text": "日志走 RTT（经 ST-Link），不需要额外串口线；烧录前确认 RTT 控制块能在 SRAM 0x20000000 起 2KB 内找到。",
+      "source": ".workbench/config.json:capture",
+      "why": "capture 后端是 rtt 不是 semihosting，接错后端会得到空输出并误判为固件没跑。"
+    },
+    {
+      "id": "DEV-1",
+      "cat": "器件",
+      "text": "上电自检：OLED 有启动画面（MPU6050 OK @ 0x68/0x69）；静止放置时 Roll/Pitch 标准差应 < 1°。",
+      "source": "docs/FSD.md:35-39, FR-MPU-03",
+      "why": "分不清「没数据」是链路问题还是器件问题，就会在两处来回改。"
+    }
+  ]
+}
