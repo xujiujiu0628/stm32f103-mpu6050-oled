@@ -81,9 +81,9 @@
     },
     {
       "id": "FR-OLED-02",
-      "desc": "关屏后无周期性 RTT 数据（节流验证）",
+      "desc": "关屏后无周期性 RTT 数据（节流验证）（页码 3→4：OLEDS_OFF=4，2026-11-18 真机核对）",
       "texts": [
-        "[STATE=3 last="
+        "[STATE=4 last="
       ]
     },
     {
@@ -92,7 +92,11 @@
       "texts": [
         "[BOOT] stm32f103-mpu6050-oled v0.1"
       ],
-      "forbidden_texts": ["HARDFAULT", "HardFault", "Error handler"]
+      "forbidden_texts": [
+        "HARDFAULT",
+        "HardFault",
+        "Error handler"
+      ]
     },
     {
       "id": "NFR-01",
@@ -133,30 +137,114 @@
         "[IR] rotate",
         "[IR] harddrop rows="
       ]
+    },
+    {
+      "id": "FR-IR-05",
+      "desc": "IR 模式左移：点阵方块左移一行日志（用户按 LEFT）",
+      "texts": [
+        "[IR] move=left"
+      ]
+    },
+    {
+      "id": "FR-IR-06",
+      "desc": "IR 模式右移：点阵方块右移一行日志（用户按 RIGHT）",
+      "texts": [
+        "[IR] move=right"
+      ]
+    },
+    {
+      "id": "FR-IR-07",
+      "desc": "IR 模式软降：点阵方块下移一行日志（用户按 DOWN）",
+      "texts": [
+        "[IR] move=down"
+      ]
+    },
+    {
+      "id": "FR-IR-08",
+      "desc": "IR 键 0x45 切换点阵俄罗斯方块显示开关（on/off 各一次）",
+      "texts": [
+        "[IR] matrix=off",
+        "[IR] matrix=on"
+      ]
     }
   ],
   "waived": [
-    { "id": "FR-DISP-02", "reason": "10Hz 刷新率系屏上视觉/示波器测量, RTT 不可见",
-      "evidence": "docs/FSD.md#FR-DISP-02", "owner": "maintainer", "date": "2026-09-11" },
-    { "id": "FR-OLED-03", "reason": "4 页显示内容为视觉观察项; 状态字段侧有 FR-OLED-01/02 断言",
-      "evidence": "docs/FSD.md#FR-OLED-03", "owner": "maintainer", "date": "2026-09-11" },
-    { "id": "FR-KEY-03", "reason": "状态机切换需真人按键时序, 断言在采集窗内不稳定; 真机物理测试已验",
-      "evidence": ".workbench/releases/v0.5.json", "owner": "maintainer", "date": "2026-09-11" },
-    { "id": "FR-PWR-01", "reason": "关屏黑屏为视觉观察; 后台续跑由 FR-OLED-02 断言部分覆盖",
-      "evidence": ".workbench/releases/v0.5.json", "owner": "maintainer", "date": "2026-09-11" },
-    { "id": "FR-PWR-02", "reason": "唤醒回原页为物理按键序列验证",
-      "evidence": ".workbench/releases/v0.5.json", "owner": "maintainer", "date": "2026-09-11" },
-    { "id": "FR-BRT-02", "reason": "滞回阈值正确性主体在 host tier（哨兵单测 21 例），verify 面由 FR-BRT-01 心跳 + FR-BRT-03 人工档变观察覆盖",
-      "evidence": "tests/test_brt_band.c", "owner": "maintainer", "date": "2026-09-12" },
-    { "id": "FR-BRT-03", "reason": "变档 ≤100ms 亮度可察觉变化为人工目测；无周期刷屏占用由 FR-BRT-01 心跳频率断言侧面钉",
-      "evidence": "docs/FSD.md#FR-BRT-03", "owner": "maintainer", "date": "2026-09-12" },
-    { "id": "FR-CAL-02", "reason": "覆盖层出现/撤销为人工目测；'校准期间禁止穿插刷屏'为代码结构约束（OledView_ShowCalibHint 先刷后采样），fresh-checker 审读面",
-      "evidence": "docs/FSD.md#FR-CAL-02", "owner": "maintainer", "date": "2026-09-12" },
-    { "id": "FR-IR-05", "reason": "负向判定（IR 模式倾斜板子方块不横移），与 FR-IR-02/04 的正向断言同窗冲突，不做机器断言；走 README 人工核对表",
-      "evidence": "README.md#红外相关人工核对", "owner": "maintainer", "date": "2026-11-02" },
-    { "id": "FR-IR-06", "reason": "负向判定（MPU 模式按遥控旋转键无 [IR] rotate），与 FR-IR-02 的正向断言同窗冲突，不做机器断言；走 README 人工核对表",
-      "evidence": "README.md#红外相关人工核对", "owner": "maintainer", "date": "2026-11-02" },
-    { "id": "FR-IR-07", "reason": "负向判定（IR 模式按住旋转键只出 1 行 [IR] rotate），重复帧时序在采集窗内不可稳定断言；走 README 人工核对表",
-      "evidence": "README.md#红外相关人工核对", "owner": "maintainer", "date": "2026-11-02" }
+    {
+      "id": "FR-DISP-02",
+      "reason": "10Hz 刷新率系屏上视觉/示波器测量, RTT 不可见",
+      "evidence": "docs/FSD.md#FR-DISP-02",
+      "owner": "maintainer",
+      "date": "2026-09-11"
+    },
+    {
+      "id": "FR-OLED-03",
+      "reason": "4 页显示内容为视觉观察项; 状态字段侧有 FR-OLED-01/02 断言",
+      "evidence": "docs/FSD.md#FR-OLED-03",
+      "owner": "maintainer",
+      "date": "2026-09-11"
+    },
+    {
+      "id": "FR-KEY-03",
+      "reason": "状态机切换需真人按键时序, 断言在采集窗内不稳定; 真机物理测试已验",
+      "evidence": ".workbench/releases/v0.5.json",
+      "owner": "maintainer",
+      "date": "2026-09-11"
+    },
+    {
+      "id": "FR-PWR-01",
+      "reason": "关屏黑屏为视觉观察; 后台续跑由 FR-OLED-02 断言部分覆盖",
+      "evidence": ".workbench/releases/v0.5.json",
+      "owner": "maintainer",
+      "date": "2026-09-11"
+    },
+    {
+      "id": "FR-PWR-02",
+      "reason": "唤醒回原页为物理按键序列验证",
+      "evidence": ".workbench/releases/v0.5.json",
+      "owner": "maintainer",
+      "date": "2026-09-11"
+    },
+    {
+      "id": "FR-BRT-02",
+      "reason": "滞回阈值正确性主体在 host tier（哨兵单测 21 例），verify 面由 FR-BRT-01 心跳 + FR-BRT-03 人工档变观察覆盖",
+      "evidence": "tests/test_brt_band.c",
+      "owner": "maintainer",
+      "date": "2026-09-12"
+    },
+    {
+      "id": "FR-BRT-03",
+      "reason": "变档 ≤100ms 亮度可察觉变化为人工目测；无周期刷屏占用由 FR-BRT-01 心跳频率断言侧面钉",
+      "evidence": "docs/FSD.md#FR-BRT-03",
+      "owner": "maintainer",
+      "date": "2026-09-12"
+    },
+    {
+      "id": "FR-CAL-02",
+      "reason": "覆盖层出现/撤销为人工目测；'校准期间禁止穿插刷屏'为代码结构约束（OledView_ShowCalibHint 先刷后采样），fresh-checker 审读面",
+      "evidence": "docs/FSD.md#FR-CAL-02",
+      "owner": "maintainer",
+      "date": "2026-09-12"
+    },
+    {
+      "id": "FR-IR-05",
+      "reason": "负向判定（IR 模式倾斜板子方块不横移），与 FR-IR-02/04 的正向断言同窗冲突，不做机器断言；走 README 人工核对表",
+      "evidence": "README.md#红外相关人工核对",
+      "owner": "maintainer",
+      "date": "2026-11-02"
+    },
+    {
+      "id": "FR-IR-06",
+      "reason": "负向判定（MPU 模式按遥控旋转键无 [IR] rotate），与 FR-IR-02 的正向断言同窗冲突，不做机器断言；走 README 人工核对表",
+      "evidence": "README.md#红外相关人工核对",
+      "owner": "maintainer",
+      "date": "2026-11-02"
+    },
+    {
+      "id": "FR-IR-07",
+      "reason": "负向判定（IR 模式按住旋转键只出 1 行 [IR] rotate），重复帧时序在采集窗内不可稳定断言；走 README 人工核对表",
+      "evidence": "README.md#红外相关人工核对",
+      "owner": "maintainer",
+      "date": "2026-11-02"
+    }
   ]
 }

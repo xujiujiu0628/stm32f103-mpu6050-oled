@@ -33,6 +33,7 @@ static uint32_t s_last_rtt_tick = 0;   // 上次 RTT 打印
 
 /* 控制模式：0=SENSOR(MPU 体感) 1=IR(遥控器全接管)，上电默认体感 */
 static uint8_t s_ctrl_mode = TETRIS_INPUT_SENSOR;
+static uint8_t s_matrix_tetris_on = 1;   /* 点阵是否显示俄罗斯方块（IR 键 0x45 切换） */
 
 /* ---------------- 第 1 步实测：刷帧耗时 / 实际采样周期 / 循环节拍 ----------------
  * 1s 一行 RTT 心跳，整数定点打印（nano printf 不认 %f，历史坑）。
@@ -113,28 +114,50 @@ static void ir_dispatch(void)
         }
         if (!ev.valid) continue;                 /* 命令补码不过 → 不动作 */
 
-        if (ev.cmd == IR_KEY_MODE)
+        if (ev.cmd == IR_KEY_MODE || ev.cmd == IR_KEY_MATRIX_ONOFF)
         {
             if (ev.kind == IR_EV_REPEAT) continue;
-            s_ctrl_mode = (s_ctrl_mode == TETRIS_INPUT_SENSOR)
-                          ? (uint8_t)TETRIS_INPUT_IR : (uint8_t)TETRIS_INPUT_SENSOR;
-            Tetris_SetInputMode((TetrisInputMode)s_ctrl_mode);
-            SEGGER_RTT_WriteString(0, s_ctrl_mode ? "[IR] mode=IR\n" : "[IR] mode=MPU\n");
+            if (ev.cmd == IR_KEY_MODE)
+            {
+                s_ctrl_mode = (s_ctrl_mode == TETRIS_INPUT_SENSOR)
+                              ? (uint8_t)TETRIS_INPUT_IR : (uint8_t)TETRIS_INPUT_SENSOR;
+                Tetris_SetInputMode((TetrisInputMode)s_ctrl_mode);
+                SEGGER_RTT_WriteString(0, s_ctrl_mode ? "[IR] mode=IR\n" : "[IR] mode=MPU\n");
+            }
+            else
+            {
+                s_matrix_tetris_on = !s_matrix_tetris_on;
+                if (s_matrix_tetris_on)
+                {
+                    Matrix7219_Reconfig();                       /* 唤醒后会立即刷下一帧 */
+                }
+                else
+                {
+                    Matrix7219_Shutdown(1);                      /* 只灭点阵，不动 OLED 与游戏逻辑 */
+                }
+                SEGGER_RTT_WriteString(0, s_matrix_tetris_on
+                                          ? "[IR] matrix=on (resumed)\n"
+                                          : "[IR] matrix=off (paused)\n");
+            }
             continue;
         }
 
         if (s_ctrl_mode != TETRIS_INPUT_IR) continue;   /* MPU 模式下遥控动作键不生效 */
+        if (!s_matrix_tetris_on) continue;              /* 暂停中: 动作键不生效（棋盘冻结） */
 
         switch (ev.cmd)
         {
         case IR_KEY_LEFT:
             Tetris_ShiftLeft();
+            SEGGER_RTT_WriteString(0, "[IR] move=left\n");
             break;
         case IR_KEY_RIGHT:
             Tetris_ShiftRight();
+            SEGGER_RTT_WriteString(0, "[IR] move=right\n");
             break;
         case IR_KEY_DOWN:
             Tetris_SoftDrop();
+            SEGGER_RTT_WriteString(0, "[IR] move=down\n");
             break;
         case IR_KEY_ROTATE:
             if (ev.kind == IR_EV_REPEAT) break;
@@ -314,8 +337,9 @@ int main(void)
                 SEGGER_RTT_WriteString(0, "[DIAG] MPU6050_UpdateEuler FAIL\n");
             }
 
-            /* 俄罗斯方块 tick：跟随 100Hz 采样节拍（体感判定 + 重力下落） */
-            if (mpu_rc == 0)
+            /* 俄罗斯方块 tick：跟随 100Hz 采样节拍（体感判定 + 重力下落）
+             * 2026-11-18: 关点阵 = 暂停 —— tick 一并停掉，棋盘/分数冻结 */
+            if (mpu_rc == 0 && s_matrix_tetris_on)
             {
                 const MPU6050_RawData_t *raw = MPU6050_GetRaw();
                 const MPU6050_Euler_t   *eul = MPU6050_GetEuler();

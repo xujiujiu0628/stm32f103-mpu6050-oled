@@ -73,7 +73,7 @@ gcc -std=c99 -Wall -Wextra -IUser -IUser/tetris -o build/test_tetris.exe tests/t
 |---|---|---|
 | FR-CAL-01 | `[CAL] done` | **PB15 长按** ~1s（陀螺仪重校准 + 重开一局） |
 | FR-KEY-01 | `[KEY] SHORT` | **PA0 短按**（每按一次打印一次） |
-| FR-OLED-02 | `[STATE=3 last=` | **PA0 短按 ×3**，停在俄罗斯方块页（state 3） |
+| FR-OLED-02 | `[STATE=4 last=` | **PA0 长按**（关屏 = state 4；2026-11-18 页码核对） |
 | FR-KEY-02 | `[KEY] LONG` | **PA0 长按** ~1s（= 关屏，**必须最后做**） |
 
 推荐顺序（`--timeout 60` 起步，烧写后板子重启即开始计时）：
@@ -211,7 +211,8 @@ gcc -std=c99 -Wall -Wextra -IUser -IUser/tetris -o build/test_tetris.exe tests/t
 | 软降 | 0x07 | 按住连发 |
 | 旋转 | 0x15 | 不吃重复帧 |
 | 硬降 | 0x40 | 不吃重复帧 |
-| 模式切换 | 0x09 | 两种模式下都生效 |
+| 模式切换 | 0x46 | 两种模式下都生效（2026-11-18 真机扫码） |
+| 点阵暂停/继续 | 0x45 | 关=点阵灭+游戏冻结，开=同一局继续（2026-11-18 真机扫码） |
 
 **键值校准（必做一次）**：烧录后打开 RTT，按一遍遥控器，从 `[IR] addr=0x.. cmd=0x..` 行读出实际码值，
 填进 `User/ir/ir_keymap.h` 重编即可。默认值是常见 21 键迷你遥控，**未实测**。

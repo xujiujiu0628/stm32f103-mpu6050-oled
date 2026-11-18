@@ -16,6 +16,7 @@
 #define IR_KEY_DOWN      0x07U
 #define IR_KEY_ROTATE    0x15U
 #define IR_KEY_HARDDROP  0x40U
-#define IR_KEY_MODE      0x09U
+#define IR_KEY_MODE      0x46U   /* 2026-11-18 真机扫码: 37 帧实测 */
+#define IR_KEY_MATRIX_ONOFF 0x45U /* 2026-11-18 真机扫码: 70 帧实测 */
 
 #endif /* __IR_KEYMAP_H */

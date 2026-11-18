@@ -5,10 +5,10 @@
 
 /* 显示状态 */
 typedef enum {
-    OLEDS_RAW = 0,       // 页面 0：六轴原始数据
-    OLEDS_EULER,         // 页面 1：欧拉角
-    OLEDS_ATTITUDE,      // 页面 2：2D 姿态点图
-    OLEDS_TETRIS,        // 页面 3：俄罗斯方块副屏（下一块 + 分数，棋盘在 MAX7219 点阵上）
+    OLEDS_TETRIS = 0,    // 页面 0：俄罗斯方块副屏（下一块 + 分数，棋盘在 MAX7219 点阵上）
+    OLEDS_RAW,           // 页面 1：六轴原始数据
+    OLEDS_EULER,         // 页面 2：欧拉角
+    OLEDS_ATTITUDE,      // 页面 3：2D 姿态点图
     OLEDS_OFF,           // 页面 4：关屏
 } OledState_t;
 

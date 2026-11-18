@@ -4,8 +4,9 @@
   * @brief   OLED 显示状态机：4 状态切换 + 10Hz 节流
   *
   * @状态机
-  *    OLEDS_RAW(0) → OLEDS_EULER(1) → OLEDS_ATTITUDE(2) → OLEDS_RAW(0)：短按循环
-  *    任意非 OFF 状态 + 长按 → OLEDS_OFF
+  *    OLEDS_TETRIS(0) → OLEDS_RAW(1) → OLEDS_EULER(2) → OLEDS_ATTITUDE(3)
+  *      → OLEDS_TETRIS(0)：短按循环（2026-11-18 用户要求: 俄罗斯方块由末页挪到首页）
+  *    任意非 OFF 状态 + 长按 → OLEDS_OFF(4)；OFF + 短按 → 唤醒到 last_state
   *    OFF + 短按 → 唤醒到 last_state（保留关屏前的页面）
   *    OFF + 长按 → 无操作
   *
@@ -105,8 +106,8 @@ static uint8_t oled_flush_slice(void)
 }
 #endif
 
-static OledState_t s_state      = OLEDS_RAW;
-static OledState_t s_last_state = OLEDS_EULER;  // 关屏前的状态（首次默认 EULER，唤醒后回这里）
+static OledState_t s_state      = OLEDS_TETRIS;
+static OledState_t s_last_state = OLEDS_RAW;  // 关屏前的状态（首次默认 RAW，唤醒后回这里）
 static uint32_t    s_last_render_ms = 0;
 static uint8_t     s_first_render = 0;          // 启动画面已显示标志
 static uint8_t     s_calib_overlay = 0;         // 校准覆盖层在场（FR-CAL-02）
@@ -319,8 +320,8 @@ void OledView_Init(void)
 {
     My_OLED_Init();
     render_startup();
-    s_state = OLEDS_RAW;
-    s_last_state = OLEDS_EULER;
+    s_state = OLEDS_TETRIS;
+    s_last_state = OLEDS_RAW;
     s_last_render_ms = g_millis;
     s_first_render = 0;
 }
@@ -353,10 +354,10 @@ void OledView_HandleKey(uint8_t short_press, uint8_t long_press)
         return;
     }
 
-    /* 短按：循环 0→1→2→3→0 */
+    /* 短按：在 0..3 四页间循环，4=OFF 不在循环内 */
     if (short_press)
     {
-        s_state = (OledState_t)((s_state + 1) % 4);  // 0,1,2,3 循环
+        s_state = (OledState_t)((s_state + 1) % OLEDS_OFF);
         OledView_ForceRefresh();
     }
 }
@@ -368,9 +369,9 @@ void OledView_Tick(void)
     {
         if (g_millis - s_last_render_ms >= 1000)
         {
-            s_state = OLEDS_RAW;
+            s_state = OLEDS_TETRIS;
             s_last_render_ms = g_millis;
-            render_raw();
+            render_tetris();
             s_first_render = 1;
         }
         return;

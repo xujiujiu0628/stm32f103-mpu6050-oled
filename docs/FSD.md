@@ -46,8 +46,8 @@ STM32F103C8T6（Blue Pill）通过软件 I2C 读取 MPU6050 6 轴数据，融合
   编号让位给 expectations 现义（见下条 superseded 注记）
 
 ### FR-OLED-02：关屏节流（数据侧）
-- **描述**：进入关屏状态（STATE=3）后 RTT 周期性数据行不再出现
-- **接受准则**：关屏后采集窗内无 `[STATE=3 last=` 之外的周期数据行增长
+- **描述**：进入关屏状态（STATE=4）后 RTT 周期性数据行不再出现
+- **接受准则**：关屏后采集窗内无 `[STATE=4 last=` 之外的周期数据行增长（2026-11-18 页码核对：OLEDS_OFF=4）
 - **superseded 注记**：本编号原义"10Hz 显示刷新"已迁至 FR-DISP-02；此处与
   expectations.json FR-OLED-02 现义对齐（F-113 漂移处置，v0.5 发布时该断言
   即以节流为判据）
