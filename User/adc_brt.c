@@ -56,15 +56,27 @@ static uint16_t adc_read_mv(void)
     ch.Rank         = ADC_REGULAR_RANK_1;
     ch.SamplingTime = ADC_SAMPLETIME_55CYCLES_5;   /* 55.5+12.5 周期 ≈68μs */
 
-    HAL_ADC_ConfigChannel(&s_hadc, &ch);
-    HAL_ADC_Start(&s_hadc);
+    if (HAL_ADC_ConfigChannel(&s_hadc, &ch) != HAL_OK)
+    {
+        return s_avg_mv;          /* 通道配置失败: 沿用上帧均值 */
+    }
+    if (HAL_ADC_Start(&s_hadc) != HAL_OK)
+    {
+        return s_avg_mv;          /* 启动失败: 不要轮询一个没启动的转换 */
+    }
     if (HAL_ADC_PollForConversion(&s_hadc, 10) != HAL_OK)
     {
-        HAL_ADC_Stop(&s_hadc);
+        if (HAL_ADC_Stop(&s_hadc) != HAL_OK)
+        {
+            /* 已处于失败路径: Stop 失败不改变本轮结论 */
+        }
         return s_avg_mv;          /* 超时: 沿用上帧均值, 不污染滑窗 */
     }
     raw = HAL_ADC_GetValue(&s_hadc);
-    HAL_ADC_Stop(&s_hadc);
+    if (HAL_ADC_Stop(&s_hadc) != HAL_OK)
+    {
+        /* 读数已取得: Stop 失败不影响本帧结果 */
+    }
     /* 12 位 0..4095 ↔ 0..3300mV (定点乘除, 避免浮点) */
     return (uint16_t)((raw * 3300UL) / 4095UL);
 }
@@ -99,7 +111,12 @@ void AdcBrt_Init(void)
         SEGGER_RTT_WriteString(0, "[BRT] adc init FAIL (brightness off-line)\r\n");
         return;
     }
-    HAL_ADCEx_Calibration_Start(&s_hadc);
+    if (HAL_ADCEx_Calibration_Start(&s_hadc) != HAL_OK)
+    {
+        s_adc_ok = 0;
+        SEGGER_RTT_WriteString(0, "[BRT] adc calibrate FAIL (brightness off-line)\r\n");
+        return;
+    }
     s_adc_ok = 1;
 }
 
