@@ -1,0 +1,119 @@
+{
+  "tag": "v0.11",
+  "git_head": "66e0034dd7c95d54c6d6f69979c67a9cbf2f2f54",
+  "branch": "master",
+  "timestamp": "2026-11-18T15:26:38+08:00",
+  "build_mode": "clean_rebuild",
+  "artifacts": {
+    "hex": {
+      "path": "build/mpu6050-oled.hex",
+      "sha256": "c0faef86d6217a6f2b68ed43ea4f282486c4141caaa0fd4fdcea7f7babff60e9"
+    },
+    "elf": {
+      "path": "build/mpu6050-oled.elf",
+      "sha256": "8ec4f5a6b01ae9321af6b08fed097a9969215b624539541f8698ae79abeab9d9"
+    }
+  },
+  "contracts": {
+    "config_sha256": "062cca372177b3685bf95e83ee75b547ac15472463e8c3c4322fee8e279add50",
+    "expectations_sha256": "4d4f5238229ed9c7a454b06bc7f67fd7f666a896ba760c42640eccab265365d7"
+  },
+  "results": [
+    {
+      "id": "FR-BOOT-01",
+      "status": "pass"
+    },
+    {
+      "id": "FR-BOOT-02",
+      "status": "pass"
+    },
+    {
+      "id": "FR-BRT-01",
+      "status": "pass"
+    },
+    {
+      "id": "FR-MPU-01",
+      "status": "pass"
+    },
+    {
+      "id": "FR-MPU-02",
+      "status": "pass"
+    },
+    {
+      "id": "FR-MPU-03",
+      "status": "pass"
+    },
+    {
+      "id": "FR-OLED-01",
+      "status": "pass"
+    },
+    {
+      "id": "FR-KEY-01",
+      "status": "pass"
+    },
+    {
+      "id": "FR-KEY-02",
+      "status": "pass"
+    },
+    {
+      "id": "FR-CAL-01",
+      "status": "pass"
+    },
+    {
+      "id": "FR-OLED-02",
+      "status": "pass"
+    },
+    {
+      "id": "FR-SAFE-01",
+      "status": "pass"
+    },
+    {
+      "id": "NFR-01",
+      "status": "pass"
+    },
+    {
+      "id": "FR-IR-01",
+      "status": "pass"
+    },
+    {
+      "id": "FR-IR-02",
+      "status": "pass"
+    },
+    {
+      "id": "FR-IR-03",
+      "status": "pass"
+    },
+    {
+      "id": "FR-IR-04",
+      "status": "pass"
+    },
+    {
+      "id": "FR-IR-05",
+      "status": "pass"
+    },
+    {
+      "id": "FR-IR-06",
+      "status": "pass"
+    },
+    {
+      "id": "FR-IR-07",
+      "status": "pass"
+    },
+    {
+      "id": "FR-IR-08",
+      "status": "pass"
+    }
+  ],
+  "xfail_waived": [],
+  "evidence": "hardware_validated",
+  "fidelity_boundaries": [
+    "真机 capture 输出匹配判定; 不构成产品级/认证级/长期可靠性声明"
+  ],
+  "limitations": [],
+  "signature": "",
+  "tools": {
+    "toolkit": "0.11",
+    "python": "3.14.3",
+    "gcc": "arm-none-eabi-gcc.exe (GNU Arm Embedded Toolchain 10.3-2021.10) 10.3.1 20210824 "
+  }
+}
