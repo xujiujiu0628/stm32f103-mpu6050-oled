@@ -1,0 +1,40 @@
+name: CI
+
+# 只在本仓 master 的 push 和手动触发时运行；不接 pull_request，避免 fork PR 在公开仓跑任意代码。
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: build firmware + host unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ARM toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi make
+          echo "--- versions ---"
+          arm-none-eabi-gcc --version | head -1
+          make --version | head -1
+          gcc --version | head -1
+
+      # 与 README「构建与烧录」一致：make clean && make，产物 build/mpu6050-oled.{elf,hex,bin}
+      - name: Build firmware (arm-none-eabi-gcc)
+        run: make clean && make
+
+      # make test 目标写死了 C:/msys64 的 mingw gcc + cygpath，Linux 上不能直接用；
+      # 这里按 README 的手动命令用系统 gcc 跑 3 个纯逻辑 host 单测。
+      - name: Host unit tests
+        run: |
+          mkdir -p build
+          gcc -std=c99 -Wall -Wextra -IUser -o build/test_brt_band tests/test_brt_band.c User/brt_band.c
+          ./build/test_brt_band
+          gcc -std=c99 -Wall -Wextra -IUser -IUser/tetris -o build/test_tetris tests/test_tetris.c User/tetris/tetris.c -lm
+          ./build/test_tetris
+          gcc -std=c99 -Wall -Wextra -IUser -IUser/ir -o build/test_ir_decode tests/test_ir_decode.c User/ir/ir_decode.c
+          ./build/test_ir_decode

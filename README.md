@@ -1,6 +1,7 @@
 # stm32f103-mpu6050-oled —— MPU6050 姿态可视化装置
 
 [![version](https://img.shields.io/badge/version-v0.11-2f6fd0)](https://github.com/xujiujiu0628/stm32f103-mpu6050-oled/tags)
+[![CI](https://github.com/xujiujiu0628/stm32f103-mpu6050-oled/actions/workflows/ci.yml/badge.svg)](https://github.com/xujiujiu0628/stm32f103-mpu6050-oled/actions/workflows/ci.yml)
 ![MCU](https://img.shields.io/badge/MCU-STM32F103C8T6-blue)
 ![toolchain](https://img.shields.io/badge/toolchain-arm--none--eabi--gcc-informational)
 ![verify](https://img.shields.io/badge/真机闭环-13%2F13-success)
