@@ -1,5 +1,21 @@
 # stm32f103-mpu6050-oled —— MPU6050 姿态可视化装置
 
+[![version](https://img.shields.io/github/v/tag/xujiujiu0628/stm32f103-mpu6050-oled?label=version&color=2f6fd0)](https://github.com/xujiujiu0628/stm32f103-mpu6050-oled/tags)
+![MCU](https://img.shields.io/badge/MCU-STM32F103C8T6-blue)
+![toolchain](https://img.shields.io/badge/toolchain-arm--none--eabi--gcc-informational)
+![verify](https://img.shields.io/badge/真机闭环-13%2F13-success)
+
+## 工程亮点
+
+- **三路独立总线并发**：MPU6050 软 I2C 400 kHz、SSD1306 软 I2C 100 kHz、MAX7219（SPI / 软件位翻转）各自独立总线、互不干扰；互补滤波 α=0.98 解算欧拉角，不依赖 DMP。
+- **用 DWT 抓实时性瓶颈**：定位到整帧刷屏单次阻塞 **132.1 ms**、把 MPU 采样压到 **7.3 Hz**；改为 16×64 字节分片刷 + 合并定位命令后，阻塞降到 **8.4 ms**、采样恢复到 **96~97 Hz**（约 13 倍）。
+- **架构做量化取舍**：实测否决引入 FreeRTOS（CPU 占用不变、帧率仍 7 fps、额外 +8 KB flash）；红外解码用 EXTI 双边沿 + DWT 时间戳，ISR 只跑状态机，解码器脱离 HAL，配 12 组 host 单测。
+- **真机逼出的 3 个隐性 bug**：`nano.specs` 未链接浮点 `printf`（浮点打印空串）、OLED 越界写污染 `.bss` 致无关模块误触发、软 I2C 阻塞把采样率降到 1/3 放大滤波漂移。
+- **体感游戏**：固定 10 ms tick 驱动 0.5 s/格节拍，倾斜判侧移、敲击判旋转，定点随机数；按键为单击 / 双击 / 长按等 7 标志位状态机。
+- **端到端真机验收**：`verify.py` 真机闭环 **13/13**（含 4 项人工交互 FR），GCC 主链 **0 error 0 warning**。
+
+---
+
 STM32F103C8T6（Blue Pill）通过 **软件 I2C 读取 MPU6050 6 轴数据**，互补滤波融合成欧拉角，
 在 0.96 寸 SSD1306 OLED 上实时显示，**PA0 按键**切换显示状态；
 外挂 **MAX7219 8x8 点阵**跑体感俄罗斯方块（倾斜移动 / 敲击旋转），OLED 作副屏。
